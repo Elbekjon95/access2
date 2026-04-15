@@ -36,7 +36,7 @@ api/*.txt
 
 # Katta binary fayllar (serverda saqlash kerak emas)
 img/IMG_8417.JPG
-img/airport_map.jpg
+# img/airport_map.jpg  # Temporarily allow for deployment
 
 # Yuklangan fayllar (serverda yaratiladi, git'ga kiritilmasin)
 uploads/
