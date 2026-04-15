@@ -1081,3 +1081,12 @@ header {
     font-weight: 600;
     color: white;
 }
+
+
+.language-modal {
+    display: flex !important;
+}
+
+.language-modal.hide {
+    display: none !important;
+}
