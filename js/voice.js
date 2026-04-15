@@ -11,6 +11,7 @@ import { autoCapture } from "./camera.js";
 import { setComplaintStatus, typewriterEffect } from "./ui.js";
 
 function spellNumberUzbek(numberStr) {
+  numberStr = String(numberStr);
   let num = parseInt(numberStr.replace(/[^\d\-]/g, ""), 10);
   if (isNaN(num)) return numberStr;
   if (num === 0) return "nol";
