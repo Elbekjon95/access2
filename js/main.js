@@ -72,17 +72,9 @@ function resetInactivityTimer() {
 }
 
 function clearBrowserCache() {
-    // LocalStorage'dan faqat til sozlamalarini saqlab qolamiz
-    const savedLang = localStorage.getItem('kiosk_lang');
-    
-    // Barcha cache'ni tozalash
+    // Barcha cache'ni tozalash (til sozlamalarini ham)
     localStorage.clear();
     sessionStorage.clear();
-    
-    // Tilni qaytarish
-    if (savedLang) {
-        localStorage.setItem('kiosk_lang', savedLang);
-    }
     
     // Hard reload (cache'siz yangilash)
     window.location.reload(true);
@@ -107,13 +99,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Sahifa yuklanganda cache tozalash (manual refresh uchun)
   const isManualRefresh = performance.navigation.type === 1;
   if (isManualRefresh) {
-    console.log("Manual refresh aniqlandi. Cache tozalanmoqda...");
-    const savedLang = localStorage.getItem('kiosk_lang');
+    console.log("Manual refresh aniqlandi. Cache va til sozlamalari tozalanmoqda...");
     localStorage.clear();
     sessionStorage.clear();
-    if (savedLang) {
-      localStorage.setItem('kiosk_lang', savedLang);
-    }
   }
   
   initFlightsTabs();
