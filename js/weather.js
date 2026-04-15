@@ -106,8 +106,12 @@ function updateLoadMoreButton() {
 
 function renderWeatherCards(results) {
     const weatherGrid = document.getElementById('weather-grid');
-    weatherGrid.innerHTML = '';
     
+    // Eski "Ko'proq yuklash" tugmasini o'chirish
+    const existingBtn = document.getElementById('load-more-weather-btn');
+    if (existingBtn) existingBtn.remove();
+    
+    // Yangi kartalarni qo'shish (eski kartalar saqlanadi)
     results.forEach(w => {
         const card = document.createElement('div');
         card.className = 'weather-card';
