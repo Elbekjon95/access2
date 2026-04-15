@@ -79,36 +79,43 @@ class AirportNavigation {
   }
 
   async loadMap(imagePath) {
-    return new Promise((resolve, reject) => {
+    // 1. Xarita rasmini yuklash
+    await new Promise((resolve, reject) => {
       this.backgroundImage.onload = () => {
         this.worldWidth = this.backgroundImage.naturalWidth || this.backgroundImage.width;
         this.worldHeight = this.backgroundImage.naturalHeight || this.backgroundImage.height;
         console.log('[NAV] Map loaded:', this.worldWidth, 'x', this.worldHeight);
         this.resizeCanvasToContainer();
-        this.updateCollisionGrid();
         this.needsRender = true;
-        this.mapReady = true;
-        if (this.pendingTarget) {
-          const targetName = this.pendingTarget;
-          this.pendingTarget = null;
-          this.findPath(targetName);
-        }
         resolve();
       };
       this.backgroundImage.onerror = (err) => {
         console.error('[NAV] Failed to load map image:', imagePath, err);
-        this.mapReady = false;
         reject(err);
       };
       this.backgroundImage.src = imagePath;
     });
+
+    // 2. Baryerlarni yuklash (rasm yuklanganidan KEYIN — worldWidth tayyor)
     try {
       const apiBase = (window.location.pathname.includes("/admin/")) ? "../" : "";
       const res = await fetch(`${apiBase}api/barriers.php`);
       this.barriers = await res.json();
-      this.updateCollisionGrid();
+      console.log('[NAV] Barriers loaded:', this.barriers.length);
     } catch (e) {
-      console.error("Barriers fetch error:", e);
+      console.error('[NAV] Barriers fetch error:', e);
+      this.barriers = [];
+    }
+
+    // 3. Collision grid — rasm va baryerlar tayyor bo'lgandan keyin
+    this.updateCollisionGrid();
+
+    // 4. Navigatsiya tayyor
+    this.mapReady = true;
+    if (this.pendingTarget) {
+      const targetName = this.pendingTarget;
+      this.pendingTarget = null;
+      this.findPath(targetName);
     }
   }
 
@@ -117,6 +124,9 @@ class AirportNavigation {
     const cols = Math.ceil(this.worldWidth / this.gridSize) + 1;
     const rows = Math.ceil(this.worldHeight / this.gridSize) + 1;
     this.collisionGrid = new Uint8Array(cols * rows);
+
+    const MARGIN = 1; // Baryerlar atrofida 1 cell (~30px) chegarasi
+
     this.barriers.forEach((b) => {
       const d = b.barrier_data;
       if (!d) return;
@@ -125,17 +135,21 @@ class AirportNavigation {
       const bw = Number(d.w || d.width) || 0;
       const bh = Number(d.h || d.height) || 0;
       if (bw <= 0 || bh <= 0) return;
-      
-      const x1 = Math.max(0, Math.floor(bx / this.gridSize));
-      const x2 = Math.min(cols - 1, Math.floor((bx + bw) / this.gridSize));
-      const y1 = Math.max(0, Math.floor(by / this.gridSize));
-      const y2 = Math.min(rows - 1, Math.floor((by + bh) / this.gridSize));
+
+      // Math.ceil ishlatamiz — o'ng/pastki chegaralar ham to'liq bloklansin
+      const x1 = Math.max(0, Math.floor(bx / this.gridSize) - MARGIN);
+      const x2 = Math.min(cols - 1, Math.ceil((bx + bw) / this.gridSize) + MARGIN);
+      const y1 = Math.max(0, Math.floor(by / this.gridSize) - MARGIN);
+      const y2 = Math.min(rows - 1, Math.ceil((by + bh) / this.gridSize) + MARGIN);
+
       for (let x = x1; x <= x2; x++) {
         for (let y = y1; y <= y2; y++) {
           this.collisionGrid[y * cols + x] = 1;
         }
       }
     });
+
+    console.log('[NAV] Collision grid updated. Barriers:', this.barriers.length);
   }
 
   isGridBlocked(gx, gy) {

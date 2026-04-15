@@ -45,12 +45,14 @@ export function guessLanguageFromText(text) {
 }
 
 export function resolveTtsLanguage(preferred, text) {
-  // Agar foydalanuvchi tanlagan til va u o'zbek bo'lsa, uni saqlab qolamiz (krill bo'lsa ham)
-  if (preferred === "uz") return "uz";
-  
+  // Avval matnning o'zidan tilni aniqlaymiz (Kirill=ru, Arab=ar, va h.k.)
   const fromText = guessLanguageFromText(text);
   if (fromText) return fromText;
+
+  // Matndan aniqlanmasa — foydalanuvchi tanlagan tilni ishlatamiz
   if (preferred && preferred !== "auto") return preferred;
+
+  // Hech narsa aniqlanmasa — o'zbek (default)
   return "uz";
 }
 
