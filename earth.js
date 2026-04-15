@@ -56,16 +56,19 @@ function getBaseCandidates() {
 function initEarth(containerId) {
   if (window.earthInitialized) return;
 
-
   const container = document.getElementById(containerId);
   if (!container) {
-    console.error("Earth container not found");
+    console.error("Earth container not found:", containerId);
     return;
   }
 
+  // Modal animatsiyasi hali tugamagan bo'lishi mumkin — fallback o'lcham
+  const w = container.clientWidth || container.offsetWidth || 800;
+  const h = container.clientHeight || container.offsetHeight || 600;
+
   earthRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   earthScene = new THREE.Scene();
-  let aspect = container.clientWidth / container.clientHeight;
+  let aspect = w / h;
   earthCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1500);
   orbitControls = new THREE.OrbitControls(
     earthCamera,
@@ -132,7 +135,7 @@ function initEarth(containerId) {
     },
   );
 
-  earthRenderer.setSize(container.clientWidth, container.clientHeight);
+  earthRenderer.setSize(w, h);
   container.appendChild(earthRenderer.domElement);
 
   earthCamera.position.set(1.5, 0.5, 1.5);
@@ -153,7 +156,24 @@ function initEarth(containerId) {
 
   window.earthInitialized = true;
   animateEarth();
+
+  // Modal to'liq ko'ringandan keyin o'lchamni qayta sozlash
+  setTimeout(() => {
+    if (typeof window.resizeEarth === "function") window.resizeEarth();
+  }, 300);
 }
+
+// Globus o'lchamini konteynerga moslashtirish
+window.resizeEarth = function () {
+  const container = document.getElementById("earth-container");
+  if (!container || !earthRenderer || !earthCamera) return;
+  const w = container.clientWidth || container.offsetWidth || 800;
+  const h = container.clientHeight || container.offsetHeight || 600;
+  if (w === 0 || h === 0) return;
+  earthRenderer.setSize(w, h);
+  earthCamera.aspect = w / h;
+  earthCamera.updateProjectionMatrix();
+};
 
 let planetProto = {
   sphere: function (size) {

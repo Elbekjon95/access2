@@ -22,22 +22,23 @@ export function showEarthRoute(originCode, destCode, routeData = null) {
   }
 
   showModal(modal);
-  const openAndRenderEarth = () => {
-    // Assuming initEarth, resizeEarth, showFlightRoute are globally loaded from 3D Earth script
+
+  const openAndRenderEarth = async () => {
     if (!window.earthInitialized && typeof window.initEarth === "function") {
       window.initEarth("earth-container");
+      // Modal CSS animatsiyasi va THREE.js init uchun kutamiz
+      await new Promise((resolve) => setTimeout(resolve, 400));
     } else if (typeof window.resizeEarth === "function") {
       window.resizeEarth();
     }
 
     if (typeof window.showFlightRoute === "function") {
-      window.showFlightRoute(from, to);
+      await window.showFlightRoute(from, to);
     }
   };
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(openAndRenderEarth);
-  });
+  // Modal to'liq ko'rinishi uchun 200ms kutib, keyin render qilamiz
+  setTimeout(openAndRenderEarth, 200);
 
   const terminalText = document.getElementById("terminal-text");
   const assistantText = document.getElementById("assistant-text");
