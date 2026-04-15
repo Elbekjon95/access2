@@ -34,7 +34,7 @@ if ($mapInfo && ($mapInfo['width'] != $mapWidth || $mapInfo['height'] != $mapHei
         $ratioX = $mapWidth / (int)$mapInfo['width'];
         $ratioY = $mapHeight / (int)$mapInfo['height'];
         $pdo->exec("UPDATE map_points SET pos_x = pos_x * $ratioX, pos_y = pos_y * $ratioY");
-        $pdo->exec("UPDATE barriers SET x = x * $ratioX, y = y * $ratioY, width = width * $ratioX, height = height * $ratioY");
+        $pdo->exec("UPDATE map_barriers SET x = x * $ratioX, y = y * $ratioY, width = width * $ratioX, height = height * $ratioY");
     }
 
     $stmtUpd = $pdo->prepare("UPDATE maps SET width = ?, height = ?, image_path = ? WHERE id = ?");

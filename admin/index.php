@@ -97,9 +97,6 @@ if ($mapRow && !empty($mapRow['image_path'])) {
                 <button onclick="testTTS()" class="status-pill" id="btn-test-tts" style="cursor: pointer; background: #1eb6ff; color: white; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
                     <i class="fas fa-volume-up"></i> UZBEKVOICE
                 </button>
-                <button onclick="testIFlytekTTS()" class="status-pill" id="btn-test-iflytek" style="cursor: pointer; background: #00c6ff; color: black; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
-                    <i class="fas fa-bolt"></i> iFLYTEK TEST
-                </button>
                 <button onclick="testSTT()" class="status-pill" id="btn-test-stt" style="cursor: pointer; background: #ff5252; color: white; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
                     <i class="fas fa-microphone"></i> UZBEKOVOZI STT
                 </button>
@@ -310,87 +307,6 @@ if ($mapRow && !empty($mapRow['image_path'])) {
             }
         }
 
-        async function testIFlytekTTS() {
-            const btn = document.getElementById('btn-test-iflytek');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
-            btn.disabled = true;
-
-            console.log("iFlytek TTS Test boshlandi...");
-            try {
-                // 1. Get Auth URL
-                const authRes = await fetch('../api/iflytek_auth.php?type=tts');
-                const authData = await authRes.json();
-                if (!authData.url) throw new Error("URL olinmadi");
-
-                console.log("Auth URL olindi:", authData.url);
-
-                // 2. WebSocket Connection
-                const socket = new WebSocket(authData.url);
-                let audioChunks = [];
-
-                socket.onopen = () => {
-                   console.log("WS Ulandi, so'rov yuborilmoqda...");
-                   const params = {
-                       "common": { "app_id": "<?php echo IFLYTEK_APPID; ?>" },
-                       "business": { 
-                           "aue": "raw", 
-                           "vcn": "xiaoyan", 
-                           "speed": 50,
-                           "pitch": 50,
-                           "volume": 50,
-                           "tte": "UTF8",
-                           "ent": "mts",
-                           "auf": "audio/L16;rate=16000"
-                       },
-                       "data": { 
-                           "status": 2, 
-                           "text": btoa(unescape(encodeURIComponent("Assalomu alaykum, iFlytek tizimi muvaffaqiyatli ulandi."))) 
-                       }
-                   };
-                   socket.send(JSON.stringify(params));
-                };
-
-                socket.onmessage = (e) => {
-                    const res = JSON.parse(e.data);
-                    if (res.code !== 0) {
-                        console.error("iFlytek Full Error Object:", res);
-                        if (res.code === 11201) {
-                            alert("iFlytek Xatosi 11201: Xizmat faollashtirilmagan yoki bepul kvota tugagan. Iltimos, console.xfyun.cn orqali 'Text to Speech' xizmatini yoqing.");
-                        } else {
-                            alert("iFlytek Xatosi: " + res.message + " (Code: " + res.code + ")\nSID: " + res.sid);
-                        }
-                        socket.close();
-                        return;
-                    }
-                    if (res.data && res.data.audio) {
-                        const binary = atob(res.data.audio);
-                        const array = new Uint8Array(binary.length);
-                        for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
-                        audioChunks.push(array);
-                    }
-                    if (res.data.status === 2) {
-                        console.log("Audio to'liq qabul qilindi.");
-                        playAudioChunks(audioChunks);
-                        socket.close();
-                    }
-                };
-
-                socket.onerror = (err) => console.error("WS Xatosi:", err);
-                socket.onclose = () => console.log("WS Yopildi.");
-
-            } catch (err) {
-                console.error(err);
-                alert("iFlytek Test Xatosi: " + err.message);
-            } finally {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        }
-
-        let sttRecorder = null;
-        let sttChunks = [];
-        
         async function testSTT() {
             const btn = document.getElementById('btn-test-stt');
             if (sttRecorder && sttRecorder.state === "recording") {
