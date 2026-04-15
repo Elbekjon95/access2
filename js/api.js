@@ -465,12 +465,9 @@ export async function sendMessage(message) {
       );
       speakText(data.reply, ttsLang);
 
-      if (
-        data.show_earth_route &&
-        data.origin &&
-        data.destination &&
-        !data.location
-      ) {
+      // 3D Globe — origin + destination bo'lsa DOIM birinchi ochiladi
+      // (data.location bo'lsa ham, globe orqali stoykaga yo'nalish beriladi)
+      if (data.show_earth_route && data.origin && data.destination) {
         setTimeout(() => {
           showEarthRoute(data.origin, data.destination, data);
         }, 1000);
@@ -482,10 +479,11 @@ export async function sendMessage(message) {
         hideQR();
       }
 
-      if (data.location && window.airportNav) {
+      // Harita — faqat reys ma'lumotisiz (origin/destination yo'q) bo'lganda
+      // Reys bo'lsa → globe orqali stoyka tugmasi bosilganda harita ochiladi
+      if (data.location && !data.origin && !data.destination && window.airportNav) {
         showModal("map-modal");
         if (typeof window.resetMapView === "function") window.resetMapView();
-        // Avval nuqtani topib, koordinatalari bilan navigateTo chaqiramiz
         const navTarget = findLocalNavTarget(data.location);
         if (navTarget && navTarget.pos_x && typeof window.airportNav.navigateTo === 'function') {
           window.airportNav.navigateTo(navTarget.pos_x, navTarget.pos_y, data.location);

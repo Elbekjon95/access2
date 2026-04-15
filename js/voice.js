@@ -80,10 +80,13 @@ export function prepareTtsText(text, language = 'uz') {
     Z: "zee",
   };
   
-  // 0. Remove bracketed metadata tags (failsafe)
-  let processed = text.replace(/\[.*?\]/g, '').replace(/\[[A-Z0-9_:]+[^\]]*$/g, '');
-  
-  // 0.1 Remove markdown formatting
+  // 0. Emoji va maxsus belgilarni o'chirish (🌤 🎤 ✅ kabi belgilar o'qilmasin)
+  let processed = text.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{2300}-\u{23FF}]|[\u{2B00}-\u{2BFF}]/gu, '');
+
+  // 0.1 Remove bracketed metadata tags (failsafe)
+  processed = processed.replace(/\[.*?\]/g, '').replace(/\[[A-Z0-9_:]+[^\]]*$/g, '');
+
+  // 0.2 Remove markdown formatting
   processed = processed.replace(/\*\*/g, '').replace(/^-\s*/gm, '');
   
   // Belgi "/" umuman o'qilmasligi uchun uni bo'sh joyga almashtiramiz
