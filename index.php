@@ -81,7 +81,7 @@ $all_points = $stmtPoints->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-cloud-sun"></i>
                         <span id="toshkent-temp">--°C</span>
                     </button>
-                    <span id="ai-status">Tizim tayyor</span>
+                    <span id="ai-status">Tizim test rejimda ishlamoqda</span>
                     <div id="time-display"></div>
                     <div id="lang-dropdown" class="lang-dropdown" data-value="auto">
                         <button type="button" class="lang-toggle" aria-haspopup="listbox" aria-expanded="false">
