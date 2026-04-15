@@ -24,8 +24,14 @@ try {
     $userMessage = $input['message'] ?? '';
     $forcedLang = $input['language'] ?? '';
 
-    // Til kodi tekshiruvi
-    if (!in_array($forcedLang, ['uz', 'ru', 'en', 'es', 'zh', 'hi', 'ar', 'bn', 'pt', 'ja', 'de', 'fr', 'it', 'ko', 'tr', 'ur', 'tg', 'ky', 'kk', 'tk'], true)) {
+    // Til kodi tekshiruvi va normalizatsiya
+    $allowedLangs = ['uz', 'ru', 'en', 'es', 'zh', 'hi', 'ar', 'bn', 'pt', 'ja', 'de', 'fr', 'it', 'ko', 'tr', 'ur', 'tg', 'ky', 'kk', 'tk'];
+    if (!in_array($forcedLang, $allowedLangs, true)) {
+        $forcedLang = '';
+    }
+    
+    // Agar 'auto' bo'lsa, uni bo'sh qilib qo'yamiz (detectLanguage ishlashi uchun)
+    if ($forcedLang === 'auto') {
         $forcedLang = '';
     }
 

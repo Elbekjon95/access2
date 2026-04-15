@@ -104,6 +104,18 @@ setInterval(() => {
 }, 1000);
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Sahifa yuklanganda cache tozalash (manual refresh uchun)
+  const isManualRefresh = performance.navigation.type === 1;
+  if (isManualRefresh) {
+    console.log("Manual refresh aniqlandi. Cache tozalanmoqda...");
+    const savedLang = localStorage.getItem('kiosk_lang');
+    localStorage.clear();
+    sessionStorage.clear();
+    if (savedLang) {
+      localStorage.setItem('kiosk_lang', savedLang);
+    }
+  }
+  
   initFlightsTabs();
   initHologram(); // LOGO SHU YERDA ISHGA TUSHADI
   startCamera(); // Kamera faqat rasm olish uchun
