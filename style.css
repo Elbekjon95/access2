@@ -1090,3 +1090,18 @@ header {
 .language-modal.hide {
     display: none !important;
 }
+
+
+/* Test rejimi miltillash animatsiyasi */
+@keyframes test-mode-pulse {
+    0%, 100% {
+        background: rgba(255, 255, 255, 0.95);
+        color: black;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+    }
+    50% {
+        background: rgba(255, 82, 82, 0.95);
+        color: white;
+        box-shadow: 0 0 20px rgba(255, 82, 82, 0.8);
+    }
+}
