@@ -453,10 +453,20 @@ export async function sendMessage(message) {
 
     if (data.reply) {
       state.lastAssistantResponseData = data;
-      
+
       if (assistantTextElement) {
-        const enhancedReply = enhanceTextWithLinks(data.reply);
-        assistantTextElement.innerHTML = `<div style="opacity: 0.6; font-size: 0.9em; margin-bottom: 1rem; border-left: 3px solid var(--secondary-blue); padding-left: 1rem;">🎤 Siz: "${message}"</div><div>${enhancedReply}</div>`;
+        // SYSTEM_NOTE larni ajratib, pastga ko'chirish
+        const sysNotes = [];
+        const cleanReply = data.reply.replace(/>>\s*SYSTEM[_\s]?NOTE\s*:([^\n]*)/gi, (_, note) => {
+          sysNotes.push(note.trim());
+          return '';
+        }).trim();
+
+        const enhancedReply = enhanceTextWithLinks(cleanReply);
+        const noteHtml = sysNotes.length
+          ? `<div style="margin-top:1rem;padding:0.5rem 0.75rem;border-left:3px solid #4a9eff;opacity:0.65;font-size:0.82em;color:#8ecfff;">${sysNotes.map(n => `⚙ ${n}`).join('<br>')}</div>`
+          : '';
+        assistantTextElement.innerHTML = `<div style="opacity: 0.6; font-size: 0.9em; margin-bottom: 1rem; border-left: 3px solid var(--secondary-blue); padding-left: 1rem;">🎤 Siz: "${message}"</div><div>${enhancedReply}</div>${noteHtml}`;
       }
 
       const ttsLang = resolveTtsLanguage(
