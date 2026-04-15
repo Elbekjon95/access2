@@ -44,10 +44,10 @@ define('DB_NAME', env('DB_NAME', 'acsess4'));
 define('DB_USER', env('DB_USER', 'root'));
 define('DB_PASS', env('DB_PASS', ''));
 
-// Gemini API Sozlamalari
+# Gemini API Sozlamalari
 define('GEMINI_API_KEY', env('GEMINI_API_KEY'));
-define('GEMINI_MODEL', env('GEMINI_MODEL', 'gemini-3.1-pro-preview'));
-define('GEMINI_TTS_MODEL', env('GEMINI_TTS_MODEL', 'gemini-2.5-flash-tts-preview'));
+define('GEMINI_MODEL', env('GEMINI_MODEL', 'gemini-2.0-flash-exp'));
+define('GEMINI_TTS_MODEL', env('GEMINI_TTS_MODEL', 'gemini-2.0-flash-exp'));
 
 // Uzbek Voice (STT & TTS)
 define('UZBEKVOICE_API_KEY', env('UZBEKVOICE_API_KEY'));
