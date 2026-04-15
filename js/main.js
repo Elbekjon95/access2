@@ -59,16 +59,33 @@ function resetMapView() {
 }
 window.resetMapView = resetMapView;
 
-// Inactivity Reset (10 minut)
+// Inactivity Reset (5 minut) va Cache tozalash
 let inactivityTimer;
-const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 daqiqa
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 daqiqa
 
 function resetInactivityTimer() {
     if (inactivityTimer) clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
-        console.log("Inactivity timeout reached. Reloading...");
-        window.location.reload();
+        console.log("5 daqiqa faoliyat yo'q. Cache tozalanmoqda va sahifa yangilanmoqda...");
+        clearBrowserCache();
     }, INACTIVITY_TIMEOUT);
+}
+
+function clearBrowserCache() {
+    // LocalStorage'dan faqat til sozlamalarini saqlab qolamiz
+    const savedLang = localStorage.getItem('kiosk_lang');
+    
+    // Barcha cache'ni tozalash
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Tilni qaytarish
+    if (savedLang) {
+        localStorage.setItem('kiosk_lang', savedLang);
+    }
+    
+    // Hard reload (cache'siz yangilash)
+    window.location.reload(true);
 }
 
 // Barcha interaksiyalarni kuzatish
