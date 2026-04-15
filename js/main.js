@@ -104,6 +104,9 @@ document.addEventListener("DOMContentLoaded", () => {
     sessionStorage.clear();
   }
   
+  // Mikrofon va kamera ruxsatini so'rash
+  requestMediaPermissions();
+  
   initFlightsTabs();
   initHologram(); // LOGO SHU YERDA ISHGA TUSHADI
   startCamera(); // Kamera faqat rasm olish uchun
@@ -286,3 +289,28 @@ function fillSidePanels(processedNodes) {
     console.log("[UI] Side panels filled with", sortedNodes.length, "nodes");
 }
 
+
+
+// Mikrofon va kamera ruxsatini so'rash
+async function requestMediaPermissions() {
+    try {
+        console.log('[PERMISSIONS] Mikrofon va kamera ruxsatini so\'ramoqda...');
+        
+        // Mikrofon ruxsati
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log('[PERMISSIONS] Mikrofon ruxsati berildi');
+        audioStream.getTracks().forEach(track => track.stop());
+        
+        // Kamera ruxsati
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        console.log('[PERMISSIONS] Kamera ruxsati berildi');
+        videoStream.getTracks().forEach(track => track.stop());
+        
+    } catch (err) {
+        console.warn('[PERMISSIONS] Media ruxsatlari rad etildi:', err);
+        // Foydalanuvchiga xabar berish (ixtiyoriy)
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            console.warn('[PERMISSIONS] Foydalanuvchi ruxsat bermadi');
+        }
+    }
+}
