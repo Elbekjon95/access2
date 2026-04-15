@@ -189,7 +189,7 @@ class ChatHandler {
                     7. Statuslarni (SCH, ARR, DEP) 'Jadval bo\'yicha', 'Uchib ketdi' deb bering.
                     8. QR-KODLAR: Agar Cargo, CIP, FASTTRACK, Helicopters so'ralsa eng oxirda [QR:Name] tegini yozing va OVOZDA O'QIMANG.
                     9. UCHIB KETISH OB-HAVOSI: tizim avtomat qo'shadi, siz gapirmang.
-                    10. REGISTRATSIYA STOYKALAR: Agar reys haqida so'ralsa va stoyka (C:) ma'lumoti mavjud bo'lsa, javobda ALBATTA stoyka raqamini aytib bering. Masalan: "Registratsiya 12-14 stoykalarida".
+                    10. REGISTRATSIYA STOYKALAR: Agar reys haqida so'ralsa va stoyka (C:) ma'lumoti mavjud bo'lsa, javobda ALBATTA stoyka raqamini aytib bering. Masalan: \"Registratsiya 12-14 stoykalarida\".
                     DATA:
                     $locationContext
                     $flightContext
