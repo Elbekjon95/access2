@@ -16,6 +16,12 @@ $dbImagePath = $mapInfo ? $mapInfo['image_path'] : 'img/airport_map.jpg';
 $cleanImagePath = str_replace('../', '', $dbImagePath);
 $localImagePath = __DIR__ . '/' . $cleanImagePath;
 
+// Agar fayl mavjud bo'lmasa, default rasm ishlatamiz
+if (!file_exists($localImagePath)) {
+    $cleanImagePath = 'img/airport_map.jpg';
+    $localImagePath = __DIR__ . '/' . $cleanImagePath;
+}
+
 $imgSize = @getimagesize($localImagePath);
 $mapWidth = $imgSize ? (int)$imgSize[0] : ($mapInfo ? (int)$mapInfo['width'] : 16700);
 $mapHeight = $imgSize ? (int)$imgSize[1] : ($mapInfo ? (int)$mapInfo['height'] : 11813);

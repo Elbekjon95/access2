@@ -48,7 +48,18 @@ try {
         $pdo->exec("CREATE TABLE IF NOT EXISTS maps (id INT PRIMARY KEY AUTO_INCREMENT, image_path VARCHAR(255), floor_name VARCHAR(100) DEFAULT 'default', updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
         $stmt = $pdo->query("SELECT image_path FROM maps LIMIT 1");
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        echo json_encode(['path' => $row ? $row['image_path'] : 'img/airport_map.jpg']);
+        
+        $imagePath = $row ? $row['image_path'] : 'img/airport_map.jpg';
+        // ../ ni olib tashlaymiz
+        $imagePath = str_replace('../', '', $imagePath);
+        
+        // Fayl mavjudligini tekshiramiz
+        $fullPath = dirname(__DIR__) . '/' . $imagePath;
+        if (!file_exists($fullPath)) {
+            $imagePath = 'img/airport_map.jpg';
+        }
+        
+        echo json_encode(['path' => $imagePath]);
         exit;
     }
 } catch (Exception $e) {

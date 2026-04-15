@@ -99,29 +99,35 @@ document.addEventListener("DOMContentLoaded", () => {
   if (typeof AirportNavigation !== "undefined") {
     window.airportNav = new AirportNavigation("map-canvas");
     // Xarita rasmini yuklash (api/map_settings.php orqali)
-    // Xarita rasmini yuklash (api/map_settings.php orqali)
     fetch("api/map_settings.php")
       .then((res) => res.json())
       .then((data) => {
-        const finalPath = (data && data.path) ? data.path : "img/airport_map.jpg";
-        window.airportNav.loadMap(finalPath);
+        let finalPath = (data && data.path) ? data.path : "img/airport_map.jpg";
+        // Agar yo'l ../ bilan boshlansa, uni olib tashlaymiz
+        finalPath = finalPath.replace(/^\.\.\//, '');
+        console.log('[MAIN] Loading map from:', finalPath);
+        return window.airportNav.loadMap(finalPath);
       })
-      .catch(() => window.airportNav.loadMap("img/airport_map.jpg"));
+      .catch((err) => {
+        console.error('[MAIN] Map settings fetch error:', err);
+        return window.airportNav.loadMap("img/airport_map.jpg");
+      });
 
     // Nuqtalarni yuklash
     fetch("api/scanner.php")
       .then((res) => res.json())
       .then((nodes) => {
         if (!Array.isArray(nodes)) {
-            console.error("Scanner DB Error or invalid data:", nodes);
+            console.error("[MAIN] Scanner DB Error or invalid data:", nodes);
             nodes = []; // Fallback to empty array to prevent crash
         }
+        console.log('[MAIN] Loaded', nodes.length, 'map points');
         if (window.airportNav && typeof window.airportNav.setNodes === "function") {
           window.airportNav.setNodes(nodes);
           fillSidePanels(nodes); // Yon panellarni to'ldirish
         }
       })
-      .catch((err) => console.error("Scanner error:", err));
+      .catch((err) => console.error("[MAIN] Scanner error:", err));
   }
 
   const mapModal = document.getElementById("map-modal");

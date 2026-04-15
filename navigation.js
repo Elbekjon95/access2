@@ -79,20 +79,29 @@ class AirportNavigation {
   }
 
   async loadMap(imagePath) {
-    this.backgroundImage.src = imagePath;
-    this.backgroundImage.onload = () => {
-      this.worldWidth = this.backgroundImage.width;
-      this.worldHeight = this.backgroundImage.height;
-      this.resizeCanvasToContainer();
-      this.updateCollisionGrid();
-      this.needsRender = true;
-      this.mapReady = true;
-      if (this.pendingTarget) {
-        const targetName = this.pendingTarget;
-        this.pendingTarget = null;
-        this.findPath(targetName);
-      }
-    };
+    return new Promise((resolve, reject) => {
+      this.backgroundImage.onload = () => {
+        this.worldWidth = this.backgroundImage.naturalWidth || this.backgroundImage.width;
+        this.worldHeight = this.backgroundImage.naturalHeight || this.backgroundImage.height;
+        console.log('[NAV] Map loaded:', this.worldWidth, 'x', this.worldHeight);
+        this.resizeCanvasToContainer();
+        this.updateCollisionGrid();
+        this.needsRender = true;
+        this.mapReady = true;
+        if (this.pendingTarget) {
+          const targetName = this.pendingTarget;
+          this.pendingTarget = null;
+          this.findPath(targetName);
+        }
+        resolve();
+      };
+      this.backgroundImage.onerror = (err) => {
+        console.error('[NAV] Failed to load map image:', imagePath, err);
+        this.mapReady = false;
+        reject(err);
+      };
+      this.backgroundImage.src = imagePath;
+    });
     try {
       const apiBase = (window.location.pathname.includes("/admin/")) ? "../" : "";
       const res = await fetch(`${apiBase}api/barriers.php`);
@@ -315,7 +324,11 @@ class AirportNavigation {
   }
 
   render() {
-    if (!this.backgroundImage.complete || !this.canvas) return;
+    if (!this.canvas) return;
+    if (!this.backgroundImage.complete || this.backgroundImage.naturalWidth === 0) {
+      console.warn('[NAV] Background image not ready yet');
+      return;
+    }
     if (this.canvas.width < 10 || this.canvas.height < 10) this.resizeCanvasToContainer();
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -348,7 +361,13 @@ class AirportNavigation {
 
     this.ctx.save();
     this.ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
-    this.ctx.drawImage(this.backgroundImage, 0, 0);
+    try {
+      this.ctx.drawImage(this.backgroundImage, 0, 0);
+    } catch (err) {
+      console.error('[NAV] drawImage error:', err);
+      this.ctx.restore();
+      return;
+    }
 
     if (this.path && this.path.length >= 2) {
       this.ctx.strokeStyle = window.NAV_LINE_COLOR || "#ff3b30";
