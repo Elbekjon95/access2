@@ -1092,25 +1092,7 @@ header {
 }
 
 
-/* Test rejimi miltillash animatsiyasi */
-@keyframes test-mode-pulse {
-    0%, 100% {
-        background: rgba(255, 255, 255, 0.95);
-        color: black;
-        box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
-    }
-    50% {
-        background: rgba(255, 82, 82, 0.95);
-        color: white;
-        box-shadow: 0 0 20px rgba(255, 82, 82, 0.8);
-    }
-}
 
-
-/* Test rejimi - modal ochilganda yashirish */
-.modal:not(.hide) ~ #app-container #test-mode-badge {
-    display: none;
-}
 
 
 /* ========================================
@@ -1122,12 +1104,6 @@ header {
     .logo-text {
         font-size: 2rem;
         letter-spacing: 0.3rem;
-    }
-    
-    #test-mode-badge {
-        left: 15rem !important;
-        font-size: 0.75rem !important;
-        padding: 6px 15px !important;
     }
     
     #status-bar {
@@ -1178,18 +1154,6 @@ header {
     .logo-text {
         font-size: 1.5rem;
         letter-spacing: 0.2rem;
-    }
-    
-    #test-mode-badge {
-        position: relative !important;
-        left: 0 !important;
-        top: 0 !important;
-        transform: none !important;
-        margin: 0.5rem auto;
-        display: block;
-        width: fit-content;
-        font-size: 0.7rem !important;
-        padding: 5px 12px !important;
     }
     
     header {

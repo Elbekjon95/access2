@@ -71,11 +71,6 @@ $all_points = $stmtPoints->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
 
-        <!-- Test rejimi yozuvi -->
-        <div id="test-mode-badge" style="position: fixed; top: 2rem; left: 20rem; z-index: 9999; background: rgba(255, 165, 0, 0.9); color: black; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; box-shadow: 0 0 20px rgba(255, 165, 0, 0.5); animation: test-mode-pulse 1.5s ease-in-out infinite;">
-            🧪 TEST REJIMIDA ISHLAMOQDA
-        </div>
-
         <div id="hologram-container"></div>
 
         <main id="main-ui">
