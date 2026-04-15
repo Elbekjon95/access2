@@ -24,11 +24,16 @@ ssh -i "sizning-kalit.pem" ubuntu@SERVER_IP
 
 ```bash
 # setup_server.sh faylini yuklang
-wget https://raw.githubusercontent.com/SIZNING-REPO/acsess4/main/setup_server.sh
+wget https://raw.githubusercontent.com/Elbekjon95/access2/main/setup_server.sh
 
-# Ishga tushiring (domeningizni kiriting)
-sudo bash setup_server.sh yourdomain.com
+# Ishga tushiring (domen va email kiriting — SSL sertifikat uchun email kerak)
+sudo bash setup_server.sh yourdomain.com admin@yourdomain.com
 ```
+
+> ⚠️ **MUHIM:** Script avtomatik ravishda:
+> - HTTPS (SSL) sozlaydi — mikrofon/kamera shu orqali ishlaydi
+> - `Permissions-Policy: camera=*, microphone=*` qo'shadi
+> - HTTP → HTTPS yo'naltirish qiladi
 
 > ⚠️ **MUHIM:** Skript oxirida chiqadigan MySQL parolini saqlang!
 
@@ -41,8 +46,8 @@ sudo bash setup_server.sh yourdomain.com
 ```bash
 cd /var/www/acsess
 
-# GitHub'da token bilan (yoki SSH key bilan)
-git clone https://github.com/SIZNING-REPO/acsess4.git .
+# GitHub'dan yuklash
+git clone https://github.com/Elbekjon95/access2.git .
 ```
 
 ### Variant B: SCP/SFTP orqali
@@ -96,29 +101,30 @@ mysql -u acsess_user -p -e "SELECT username, role FROM acsess4.users;"
 
 ## 🌐 6. Nginx va SSL sozlash
 
+> ✅ **`setup_server.sh` ishlatgan bo'lsangiz — bu qadamlar AVTOMATIK bajarilgan!**
+> Qo'lda o'rnatish kerak bo'lsa quyidagi yo'riqnomani bajaring:
+
 ```bash
-# Nginx konfiguratsiyasini o'rnatish
+# nginx_acsess.conf faylidan nusxa oling
 sudo cp /var/www/acsess/nginx_acsess.conf /etc/nginx/sites-available/acsess
 
-# Domeningizni o'zgartiring
-sudo nano /etc/nginx/sites-available/acsess
 # "yourdomain.com" ni haqiqiy domeningizga almashtiring
+sudo sed -i 's/yourdomain.com/sizning-domen.com/g' /etc/nginx/sites-available/acsess
 
 # Yoqish
 sudo ln -sf /etc/nginx/sites-available/acsess /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
+
+# SSL sertifikat olish (HTTPS — mikrofon/kamera ishlashi uchun SHART)
+sudo certbot --nginx -d sizning-domen.com -d www.sizning-domen.com \
+    --non-interactive --agree-tos --email admin@sizning-domen.com --redirect
+
+# Nginx tekshirish va qayta yuklash
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### SSL (HTTPS) - Bepul Let's Encrypt
-
-```bash
-sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
-
-# Avtomatik yangilash tekshiring
-sudo certbot renew --dry-run
-```
+> 🎤 **Nima uchun HTTPS kerak?** Brauzerlar mikrofon va kamerani (`getUserMedia`)
+> faqat HTTPS saytlarda ochadi. HTTP saytda `navigator.mediaDevices` umuman mavjud bo'lmaydi.
 
 ---
 

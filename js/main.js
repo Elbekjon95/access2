@@ -293,24 +293,38 @@ function fillSidePanels(processedNodes) {
 
 // Mikrofon va kamera ruxsatini so'rash
 async function requestMediaPermissions() {
+    // MUHIM: getUserMedia faqat HTTPS yoki localhost da ishlaydi
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    if (!isSecure) {
+        console.error('[PERMISSIONS] ❌ Sayt HTTP orqali ochilgan! Mikrofon va kamera faqat HTTPS da ishlaydi. Nginx SSL konfiguratsiyasini tekshiring.');
+        return;
+    }
+
+    // navigator.mediaDevices mavjudligini tekshirish
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('[PERMISSIONS] ❌ navigator.mediaDevices mavjud emas. Brauzer yoki HTTPS muammosi.');
+        return;
+    }
+
     try {
         console.log('[PERMISSIONS] Mikrofon va kamera ruxsatini so\'ramoqda...');
-        
+
         // Mikrofon ruxsati
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('[PERMISSIONS] Mikrofon ruxsati berildi');
+        console.log('[PERMISSIONS] ✅ Mikrofon ruxsati berildi');
         audioStream.getTracks().forEach(track => track.stop());
-        
+
         // Kamera ruxsati
         const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        console.log('[PERMISSIONS] Kamera ruxsati berildi');
+        console.log('[PERMISSIONS] ✅ Kamera ruxsati berildi');
         videoStream.getTracks().forEach(track => track.stop());
-        
+
     } catch (err) {
-        console.warn('[PERMISSIONS] Media ruxsatlari rad etildi:', err);
-        // Foydalanuvchiga xabar berish (ixtiyoriy)
+        console.warn('[PERMISSIONS] ⚠️ Media ruxsatlari rad etildi:', err);
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
             console.warn('[PERMISSIONS] Foydalanuvchi ruxsat bermadi');
+        } else if (err.name === 'NotFoundError') {
+            console.warn('[PERMISSIONS] Mikrofon yoki kamera qurilmasi topilmadi');
         }
     }
 }
