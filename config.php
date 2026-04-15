@@ -85,7 +85,7 @@ function getDbConnection() {
             echo json_encode(['error' => "Baza ulanish xatosi"]);
             exit;
         }
-        die("Ma'lumotlar bazasiga ulanib bo'lmadi.");
+        die("Ma'lumotlar bazasiga ulanib bo'lmadi: " . $e->getMessage());
     }
 }
 

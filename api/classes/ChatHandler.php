@@ -153,6 +153,9 @@ class ChatHandler {
 
         // Final "mop-up": Faqat maxsus tizim teglari (ROUTE, LOCATION, WEATHER, QR) bo'lsa tozalaymiz
         $response['reply'] = preg_replace('/\[(ROUTE|LOCATION|WEATHER|QR):[^\]]+\]/i', '', $response['reply']);
+        // SYSTEM_NOTE va shunga o'xshash tizim izohlarini olib tashlaymiz
+        $response['reply'] = preg_replace('/>>?\s*SYSTEM_NOTE\s*:.*$/mi', '', $response['reply']);
+        $response['reply'] = preg_replace('/>>?\s*SYSTEM[_\s]?NOTE.*$/mi', '', $response['reply']);
         $response['reply'] = trim($response['reply']);
 
         // Agar lokatsiya topilmasa, mavjud mapPoints dan qidirish
@@ -189,6 +192,7 @@ class ChatHandler {
                     7. Statuslarni (SCH, ARR, DEP) 'Jadval bo\'yicha', 'Uchib ketdi' deb bering.
                     8. QR-KODLAR: Agar Cargo, CIP, FASTTRACK, Helicopters so'ralsa eng oxirda [QR:Name] tegini yozing va OVOZDA O'QIMANG.
                     9. UCHIB KETISH OB-HAVOSI: tizim avtomat qo'shadi, siz gapirmang.
+                    10. SYSTEM_NOTE, >> yoki boshqa tizim izohlarini ASLO yozmang. Faqat foydalanuvchiga yo'naltirilgan javob yozing.
                     10. REGISTRATSIYA STOYKALAR: Agar reys haqida so'ralsa va stoyka (C:) ma'lumoti mavjud bo'lsa, javobda ALBATTA stoyka raqamini aytib bering. Masalan: \"Registratsiya 12-14 stoykalarida\".
                     DATA:
                     $locationContext
@@ -201,6 +205,7 @@ class ChatHandler {
                     2. ОБЯЗАТЕЛЬНО добавляйте [ROUTE:Origin-Dest] В САМЫЙ КОНЕЦ ответа! ВНИМАНИЕ: НЕ ПРОИЗНОСИТЕ ТЕГИ В АУДИО ОЗВУЧКЕ! Скобки читать запрещено!
                     3. НАВИГАЦИЯ: Добавьте в КОНЕЦ ответа [LOCATION:ExactPointName] если место есть в LOCATIONS. НЕ ОЗВУЧИВАЙТЕ ЕГО.
                     4. Пишите коротко. Без Markdown.
+                    7. НЕ пишите SYSTEM_NOTE, >> или любые системные комментарии. Только ответ для пользователя.
                     5. УСЛУГИ (CIP/VIP, Fast Track, отель): Сначала дайте ПОДРОБНУЮ информацию (цена, как купить, удобства). Затем, если есть QR-код для деталей, добавьте [QR:Name] в конце и НЕ ЧИТАЙТЕ ЕГО В АУДИО.
                     6. QR-КОДЫ: Добавьте [QR:Name] в конце и НЕ ЧИТАЙТЕ ЕГО В АУДИО.
                     ДАННЫЕ:
@@ -216,6 +221,7 @@ class ChatHandler {
                     4. Provide very short answers. No markdown.
                     5. SERVICES (CIP/VIP, Fast Track, hotel): First provide DETAILED information (price, how to buy, amenities). Then, if QR code available for details, append [QR:Name] at the end. Do NOT read it.
                     6. QR CODES: Append [QR:Name] to the end. Do NOT read it.
+                    7. NEVER write SYSTEM_NOTE, >> or any system comments. Only user-facing response.
                     DATA:
                     $locationContext
                     $flightContext
