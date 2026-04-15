@@ -175,7 +175,6 @@ server {
 
     # Mikrofon va kamera ruxsati (getUserMedia ishlashi uchun SHART)
     add_header Permissions-Policy "camera=*, microphone=*" always;
-    add_header Feature-Policy "camera *; microphone *" always;
 
     # Logs
     access_log /var/log/nginx/acsess_access.log;
