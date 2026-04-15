@@ -52,6 +52,9 @@ define('GEMINI_TTS_MODEL', env('GEMINI_TTS_MODEL', 'gemini-2.0-flash-exp'));
 // Uzbek Voice (STT & TTS)
 define('UZBEKVOICE_API_KEY', env('UZBEKVOICE_API_KEY'));
 
+// Groq Whisper Large (ko'p tilli STT)
+define('GROQ_API_KEY', env('GROQ_API_KEY'));
+
 // Tashqi API va Botlar
 define('FLIGHT_API_URL', env('FLIGHT_API_URL'));
 define('TELEGRAM_BOT_TOKEN', env('TELEGRAM_BOT_TOKEN'));
