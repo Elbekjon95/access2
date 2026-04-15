@@ -1,0 +1,1014 @@
+:root {
+    --primary-blue: #0072ff;
+    --secondary-blue: #00c6ff;
+    --bg-dark: #050a14;
+    --text-white: #ffffff;
+    --glass-bg: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+    --accent-glow: 0 0 20px rgba(0, 198, 255, 0.5);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-white);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+#app-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#hologram-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+#main-ui {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    pointer-events: none;
+}
+
+#main-ui * {
+    pointer-events: auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-text {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: 0.5rem;
+    background: linear-gradient(to right, var(--text-white), var(--secondary-blue));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+#status-bar {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    opacity: 0.8;
+    align-items: center;
+}
+
+.lang-dropdown {
+    position: relative;
+    font-size: 0.8rem;
+}
+
+.lang-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-dark);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+    cursor: pointer;
+    min-width: 140px;
+}
+
+.lang-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--bg-dark);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 6px;
+    width: 220px;
+    max-height: 280px;
+    overflow-y: auto;
+    display: none;
+    z-index: 200;
+}
+
+.lang-dropdown.open .lang-menu {
+    display: block;
+}
+
+.lang-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.flag-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 16px;
+    min-width: 24px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.flag-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.lang-flag {
+    display: inline-flex;
+    width: 24px;
+    height: 16px;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.lang-flag svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.lang-option:hover {
+    background: rgba(0, 198, 255, 0.15);
+}
+
+#interaction-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 2rem;
+    padding-bottom: 5rem;
+}
+
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px); /* Blur qiymati kamaytirildi (optimallashtirish) */
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--accent-glow);
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+#assistant-text {
+    font-size: 1.4rem;
+    line-height: 1.6;
+    min-height: 100px;
+}
+
+#bottom-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    padding-bottom: 2rem;
+}
+
+.nav-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.nav-btn:hover {
+    background: var(--primary-blue);
+    box-shadow: var(--accent-glow);
+    transform: translateY(-5px);
+}
+
+.voice-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    min-width: 240px;
+}
+
+.mic-btn {
+    width: 78px;
+    height: 78px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    background: radial-gradient(circle at 35% 25%, rgba(0, 198, 255, 0.38), rgba(0, 114, 255, 0.22));
+}
+
+.mic-btn:hover {
+    transform: translateY(-4px) scale(1.03);
+}
+
+.action-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-btn:hover {
+    background: rgba(0, 198, 255, 0.22);
+    border-color: rgba(0, 198, 255, 0.65);
+    transform: translateY(-3px);
+}
+
+#btn-call {
+    padding: 0.8rem 1.2rem;
+    font-size: 1.2rem;
+    background: rgba(0, 198, 255, 0.12);
+    border-color: var(--secondary-blue);
+}
+
+#btn-call:hover {
+    background: rgba(0, 198, 255, 0.3);
+    box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
+}
+
+#btn-complaint {
+    font-size: 0.7rem;
+    padding: 0.7rem 1.2rem;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    max-width: 160px;
+    text-align: center;
+}
+
+.pulsing {
+    animation: pulse 2s infinite;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.8);
+    transition: opacity 0.3s ease;
+}
+
+#earth-modal {
+    z-index: 120;
+}
+
+#map-modal {
+    z-index: 180;
+}
+
+.hide {
+    display: none;
+    opacity: 0;
+}
+
+.modal-content {
+    width: 100vw;
+    height: 100vh;
+    background: rgba(5, 10, 20, 0.96); 
+    backdrop-filter: blur(10px) saturate(180%); /* Modal blur kamaytirildi */
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+#map-canvas-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    border-radius: 0; /* Full screen uchun chetlarni tekislaymiz */
+    perspective: 2000px;
+    background: #000;
+    touch-action: none;
+    cursor: grab;
+}
+
+#map-modal .modal-content header {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    background: rgba(0,0,0,0.4);
+    padding: 10px 20px;
+    border-radius: 30px;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.1);
+    pointer-events: none; /* Mapni bosishga halal bermaslik uchun */
+}
+
+#map-modal .modal-content header h3 {
+    margin: 0;
+    color: white;
+    font-size: 1.2rem;
+}
+
+#map-modal .close-modal {
+    position: absolute !important;
+    top: 30px !important;
+    right: 40px !important;
+    left: auto !important; /* Chap tarafni bekor qilamiz */
+    z-index: 10005 !important;
+    font-size: 2.2rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 82, 82, 0.15);
+    border: 2px solid #ff5252;
+    color: #ff5252;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    pointer-events: auto !important;
+}
+
+
+#map-modal .close-modal:hover {
+    background: #ff5252;
+    color: white;
+    transform: scale(1.1);
+}
+
+
+#map-modal.map-preview {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10000;
+    background: #000;
+    overflow: hidden;
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#map-modal.hide {
+    display: none !important;
+}
+
+
+
+#map-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: transparent !important;
+}
+
+.close-map-btn {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: white;
+    font-size: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 100000 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s;
+    pointer-events: auto !important;
+}
+
+.close-map-btn:hover {
+    background: rgba(255, 82, 82, 0.7);
+    transform: scale(1.1);
+}
+
+#btn-voice.active-recording {
+    background: #ff5252 !important;
+    animation: pulse-red 1.5s infinite;
+    box-shadow: 0 0 20px #ff5252;
+}
+
+#btn-complaint-record.active-recording {
+    background: #ff5252 !important;
+    animation: pulse-red 1.5s infinite;
+    box-shadow: 0 0 20px #ff5252;
+}
+
+@keyframes pulse-red {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(255, 82, 82, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 82, 82, 0); }
+}
+
+#flights-table-container {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.flights-tabs {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem 1rem;
+    background: linear-gradient(180deg, rgba(0, 198, 255, 0.05), transparent);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.flight-tab-btn {
+    background: var(--glass-bg);
+    border: 2px solid var(--glass-border);
+    color: rgba(255, 255, 255, 0.7);
+    padding: 0.9rem 2.5rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.flight-tab-btn i {
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.flight-tab-btn:hover i {
+    transform: translateX(3px);
+}
+
+.flight-tab-btn[data-type="arrival"]:hover i {
+    transform: translateX(-3px);
+}
+
+.flight-tab-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 198, 255, 0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.flight-tab-btn:hover::before {
+    left: 100%;
+}
+
+.flight-tab-btn:hover {
+    border-color: var(--secondary-blue);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 198, 255, 0.3);
+}
+
+.flight-tab-btn.active {
+    background: linear-gradient(135deg, rgba(0, 198, 255, 0.3), rgba(0, 114, 255, 0.2));
+    border-color: var(--secondary-blue);
+    color: white;
+    box-shadow: 0 0 20px rgba(0, 198, 255, 0.5), inset 0 0 20px rgba(0, 198, 255, 0.1);
+    transform: scale(1.05);
+}
+
+.flight-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60%;
+    height: 3px;
+    background: var(--secondary-blue);
+    box-shadow: 0 0 10px var(--secondary-blue);
+    border-radius: 2px;
+}
+
+#flights-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: white;
+}
+
+#flights-table th, #flights-table td {
+    padding: 1.2rem;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+#flights-table th {
+    color: var(--secondary-blue);
+    font-family: 'Orbitron', sans-serif;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+#flights-table tr:hover {
+    background: rgba(0, 198, 255, 0.1);
+}
+
+/* 3D Earth Modal - RIGHT SIDE Flight Info Panel */
+.earth-flight-info-panel {
+    width: 400px;
+    min-width: 350px;
+    max-width: 450px;
+    background: rgba(0, 0, 0, 0.95);
+    border-left: 2px solid var(--secondary-blue);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.terminal-header {
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba(0, 198, 255, 0.2), rgba(0, 114, 255, 0.2));
+    border-bottom: 2px solid var(--secondary-blue);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--secondary-blue);
+    text-align: center;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(0, 198, 255, 0.8);
+}
+
+.terminal-text {
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: 1rem;
+    line-height: 1.8;
+    color: #00ff00;
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+    background: 
+        linear-gradient(rgba(0, 255, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 0, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* Scrollbar styling for terminal */
+.terminal-text::-webkit-scrollbar {
+    width: 8px;
+}
+
+.terminal-text::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.terminal-text::-webkit-scrollbar-thumb {
+    background: var(--secondary-blue);
+    border-radius: 4px;
+}
+
+/* Typing cursor animation */
+.terminal-text.typing::after {
+    content: '▋';
+    animation: blink 1s step-end infinite;
+    margin-left: 2px;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Glow effect on text */
+.terminal-text {
+    animation: terminal-glow 3s ease-in-out infinite;
+}
+
+@keyframes terminal-glow {
+    0%, 100% { 
+        text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+    }
+    50% { 
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.8), 0 0 20px rgba(0, 255, 0, 0.4);
+    }
+}
+
+.earth-route-actions {
+    border-top: 1px solid rgba(0, 198, 255, 0.25);
+    padding: 0.8rem 1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    max-height: 40%;
+    overflow-y: auto;
+    background: rgba(1, 10, 18, 0.94);
+}
+
+.earth-route-btn {
+    border: 1px solid rgba(0, 198, 255, 0.4);
+    background: linear-gradient(135deg, rgba(0, 198, 255, 0.22), rgba(0, 114, 255, 0.18));
+    color: #d9f6ff;
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+#time-display { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--accent); opacity: 0.9; }
+
+
+
+.earth-route-btn:hover {
+    border-color: rgba(0, 198, 255, 0.8);
+    transform: translateY(-1px);
+    box-shadow: 0 0 10px rgba(0, 198, 255, 0.4);
+}
+
+.earth-route-btn .counter {
+    color: #00ff90;
+}
+
+.earth-route-empty {
+    color: rgba(180, 255, 220, 0.75);
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+/* Weather Temp Button */
+.weather-temp-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--secondary-blue);
+    padding: 0.4rem 1rem;
+    border-radius: 50px;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 198, 255, 0.1);
+}
+
+.weather-temp-btn:hover {
+    background: rgba(0, 198, 255, 0.15);
+    border-color: var(--secondary-blue);
+    transform: translateY(-2px);
+    box-shadow: var(--accent-glow);
+}
+
+.weather-temp-btn i {
+    font-size: 1.1rem;
+    color: #ffc400; /* Sun color */
+    text-shadow: 0 0 5px rgba(255, 196, 0, 0.5);
+}
+
+/* Weather Modal Specifics */
+.weather-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.weather-card:hover {
+    background: rgba(0, 198, 255, 0.1);
+    border-color: var(--secondary-blue);
+    transform: scale(1.03);
+}
+
+.weather-card h4 {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--secondary-blue);
+    margin-bottom: 5px;
+    font-size: 1rem;
+}
+
+.weather-card .temp {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+
+.weather-card .desc {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    text-transform: capitalize;
+}
+
+.weather-card img {
+    width: 60px;
+    height: 60px;
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));
+}
+
+.loader-container {
+    color: var(--secondary-blue);
+    text-align: center;
+    padding: 20px;
+}
+/* Inline stoyka links */
+.inline-stoyka-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0, 198, 255, 0.15);
+    border: 1px solid rgba(0, 198, 255, 0.3);
+    color: #00e5ff;
+    padding: 0 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+    margin: 0 2px;
+}
+
+.inline-stoyka-link:hover {
+    background: rgba(0, 198, 255, 0.3);
+    border-color: #00e5ff;
+    box-shadow: 0 0 10px rgba(0, 198, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+.stoyka-tag {
+    background: #00ff90;
+    color: #050a14;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* Terminal within Earth modal interactive links */
+.terminal-text .inline-stoyka-link {
+    background: rgba(0, 255, 0, 0.1);
+    border-color: rgba(0, 255, 0, 0.3);
+    color: #00ff00;
+}
+
+.terminal-text .inline-stoyka-link:hover {
+    background: rgba(0, 255, 0, 0.2);
+    border-color: #00ff00;
+    box-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+}
+
+.terminal-text .stoyka-tag {
+    background: #00ff00;
+    color: #000;
+}
+
+/* QR Code Container Styling */
+#qr-container {
+    position: fixed;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 500;
+    width: 440px; /* 400px img + padding */
+    padding: 20px;
+    background: rgba(5, 10, 20, 0.85);
+    backdrop-filter: blur(25px);
+    border: 2px solid var(--secondary-blue);
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(0, 198, 255, 0.4);
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#qr-container.hide {
+    right: -500px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.qr-content {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+#qr-image {
+    width: 400px;
+    height: 400px;
+    object-fit: contain;
+    border-radius: 12px;
+    background: white;
+    padding: 10px;
+}
+
+#qr-label {
+    font-family: 'Orbitron', sans-serif;
+    color: var(--secondary-blue);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+#close-qr {
+    position: absolute;
+    top: -45px;
+    right: -15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid var(--glass-border);
+    color: white;
+    font-size: 2.5rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    z-index: 501;
+}
+
+#close-qr:hover {
+    background: rgba(255, 82, 82, 0.3);
+    border-color: #ff5252;
+    color: #ff5252;
+    transform: scale(1.1);
+}
+
+/* Xarita yon panellari */
+.map-side-panel {
+    position: absolute;
+    top: 100px;
+    bottom: 40px;
+    width: 280px;
+    background: rgba(5, 10, 20, 0.75);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--glass-border);
+    border-radius: 15px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.4s ease;
+}
+
+.map-side-panel.left { left: 30px; }
+.map-side-panel.right { right: 30px; }
+
+.map-side-panel .panel-header {
+    padding: 15px;
+    background: linear-gradient(135deg, rgba(0, 198, 255, 0.2), transparent);
+    border-bottom: 1px solid var(--glass-border);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    text-align: center;
+    color: var(--secondary-blue);
+    letter-spacing: 1px;
+}
+
+.map-side-panel .panel-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.panel-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    padding: 12px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.panel-item:hover {
+    background: rgba(0, 198, 255, 0.15);
+    border-color: var(--secondary-blue);
+    transform: translateX(5px);
+}
+
+.panel-item i {
+    width: 20px;
+    text-align: center;
+    color: var(--secondary-blue);
+}
+
+/* Umumiy modal yopish tugmasi (boshqa modallar uchun) */
+.modal-content header .close-modal {
+    position: absolute !important;
+    top: 20px !important;
+    right: 15px !important;
+    font-size: 2.2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: white;
+    cursor: pointer;
+    line-height: 1;
+    transition: 0.3s;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    z-index: 1010;
+}
+
+.modal-content header .close-modal:hover {
+    color: #ff5252;
+    background: rgba(255, 82, 82, 0.1);
+}
+
+
+
+
+

@@ -1,0 +1,59 @@
+{
+  "airport_name": "TAS Aerovokzal",
+  "map_points": [
+    {
+      "name": "Gate A1",
+      "type": "gate",
+      "pos_x": 150,
+      "pos_y": 200
+    },
+    {
+      "name": "Gate A2",
+      "type": "gate",
+      "pos_x": 250,
+      "pos_y": 200
+    },
+    {
+      "name": "Gate B1",
+      "type": "gate",
+      "pos_x": 450,
+      "pos_y": 300
+    },
+    {
+      "name": "Gate B2",
+      "type": "gate",
+      "pos_x": 550,
+      "pos_y": 300
+    },
+    {
+      "name": "FIDS 1",
+      "type": "fids",
+      "pos_x": 300,
+      "pos_y": 150
+    },
+    {
+      "name": "FIDS 2",
+      "type": "fids",
+      "pos_x": 500,
+      "pos_y": 150
+    },
+    {
+      "name": "Toilet",
+      "type": "toilet",
+      "pos_x": 200,
+      "pos_y": 400
+    },
+    {
+      "name": "Reception",
+      "type": "reception",
+      "pos_x": 350,
+      "pos_y": 100
+    },
+    {
+      "name": "Kiosk Start",
+      "type": "kiosk_start",
+      "pos_x": 400,
+      "pos_y": 500
+    }
+  ]
+}

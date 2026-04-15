@@ -1,0 +1,54 @@
+# ================================================
+# ACCSESS - .gitignore (AWS Deployment uchun)
+# ================================================
+
+# Muhim: Maxfiy fayllar HECH QACHON git'ga kirmasin
+.env
+
+# OSPanel va lokal muhit
+.osp/
+*.log
+
+# Vaqtinchalik debug fayllar
+tmp/
+api/*_tmp.php
+api/audit_*.php
+api/check_*.php
+api/list_*.php
+api/port_*.php
+api/test_mysql*.php
+api/debug_*.php
+api/diag_*.php
+api/db_*.php
+api/extract_*.php
+api/find_*.php
+api/fro_*.php
+api/full_*.php
+api/global_*.php
+api/generate_*.php
+api/import_*.php
+api/search_*.php
+api/sqlite_*.php
+api/multi_*.php
+
+# Audit natijalari (txt)
+api/*.txt
+
+# Katta binary fayllar (serverda saqlash kerak emas)
+img/IMG_8417.JPG
+img/airport_map.jpg
+
+# Yuklangan fayllar (serverda yaratiladi, git'ga kiritilmasin)
+uploads/
+img/captures/
+cache/
+
+# PDF hujjatlar (agar kerak bo'lmasa)
+# ASR-API.pdf
+# TTS-API.pdf
+
+# OS fayllari
+.DS_Store
+Thumbs.db
+*.swp
+*~
