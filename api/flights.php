@@ -155,19 +155,14 @@ function getProcessedFlights($showAll = false) {
 
     if (!$showAll) {
         $now = time();
-        $buffer = 20 * 60; // 20 minutlik bufer (yaqinda o'tib ketgan reyslarni ko'rsatish uchun)
+        $currentTime = date('H:i');
         
-        $merged = array_filter($merged, function($f) use ($now, $buffer) {
+        $merged = array_filter($merged, function($f) use ($currentTime) {
             $fTime = $f['time'] ?? '00:00';
-            if ($fTime === 'N/A') return true;
+            if ($fTime === 'N/A' || $fTime === '00:00') return true;
 
-            $fTimestamp = strtotime(date('Y-m-d ') . $fTime);
-            
-            if (($now - $fTimestamp) > 12 * 3600) {
-                $fTimestamp += 24 * 3600; // Ertangi kunga o'tkazish
-            }
-            
-            return ($fTimestamp + $buffer) >= $now;
+            // Faqat hozirgi vaqtdan keyingi reyslarni ko'rsatish
+            return $fTime >= $currentTime;
         });
         $merged = array_values($merged);
     }
