@@ -154,7 +154,8 @@ function getProcessedFlights($showAll = false) {
     }
 
     if (!$showAll) {
-        $now = time();
+        // Toshkent vaqt zonasini o'rnatish
+        date_default_timezone_set('Asia/Tashkent');
         $currentTime = date('H:i');
         
         $merged = array_filter($merged, function($f) use ($currentTime) {
@@ -162,7 +163,7 @@ function getProcessedFlights($showAll = false) {
             if ($fTime === 'N/A' || $fTime === '00:00') return true;
 
             // Faqat hozirgi vaqtdan keyingi reyslarni ko'rsatish
-            return $fTime >= $currentTime;
+            return $fTime > $currentTime;
         });
         $merged = array_values($merged);
     }

@@ -425,3 +425,14 @@ class AirportNavigation {
     this.ctx.restore();
   }
 }
+
+
+// Global funksiya - 3D globusdan chaqirish uchun
+window.navigateToLocation = function(locationName) {
+  if (window.airportNav && typeof window.airportNav.findPath === 'function') {
+    console.log('[GLOBAL] Navigating to:', locationName);
+    window.airportNav.findPath(locationName);
+  } else {
+    console.error('[GLOBAL] airportNav not found');
+  }
+};

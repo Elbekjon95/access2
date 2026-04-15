@@ -189,6 +189,7 @@ class ChatHandler {
                     7. Statuslarni (SCH, ARR, DEP) 'Jadval bo\'yicha', 'Uchib ketdi' deb bering.
                     8. QR-KODLAR: Agar Cargo, CIP, FASTTRACK, Helicopters so'ralsa eng oxirda [QR:Name] tegini yozing va OVOZDA O'QIMANG.
                     9. UCHIB KETISH OB-HAVOSI: tizim avtomat qo'shadi, siz gapirmang.
+                    10. REGISTRATSIYA STOYKALAR: Agar reys haqida so'ralsa va stoyka (C:) ma'lumoti mavjud bo'lsa, javobda ALBATTA stoyka raqamini aytib bering. Masalan: "Registratsiya 12-14 stoykalarida".
                     DATA:
                     $locationContext
                     $flightContext
@@ -269,7 +270,8 @@ class ChatHandler {
         $ctx = "FLIGHTS (Current Time: " . date('H:i') . "):\n";
         $ctx .= "Note: [departure] means TAS -> City, [arrival] means City -> TAS.\n";
         foreach (array_slice($flights, 0, 20) as $f) {
-            $ctx .= "- [{$f['type']}] {$f['flight_no']}|{$f['from']}->{$f['to']}|{$f['time']}|G:{$f['gate']}|C:{$f['checkin_counters']}|S:{$f['status']}\n";
+            $checkin = $f['checkin_counters'] ?? 'N/A';
+            $ctx .= "- [{$f['type']}] {$f['flight_no']}|{$f['from']}->{$f['to']}|{$f['time']}|G:{$f['gate']}|C:{$checkin}|S:{$f['status']}\n";
         }
         return $ctx;
     }
