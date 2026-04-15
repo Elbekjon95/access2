@@ -86,6 +86,9 @@ function fetchFlights() {
 }
 
 function getProcessedFlights($showAll = false) {
+    // Toshkent vaqt zonasini global o'rnatish
+    date_default_timezone_set('Asia/Tashkent');
+    
     $flights = fetchFlights();
     $apiFlights = [];
     if (isset($flights['flights']) && is_array($flights['flights'])) {
@@ -154,8 +157,6 @@ function getProcessedFlights($showAll = false) {
     }
 
     if (!$showAll) {
-        // Toshkent vaqt zonasini o'rnatish
-        date_default_timezone_set('Asia/Tashkent');
         $currentTime = date('H:i');
         
         $merged = array_filter($merged, function($f) use ($currentTime) {
