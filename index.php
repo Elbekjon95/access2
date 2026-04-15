@@ -61,6 +61,21 @@ $all_points = $stmtPoints->fetchAll(PDO::FETCH_ASSOC);
 
 <body>
     <div id="app-container">
+        <!-- Til tanlash modal (birinchi ochiladi) -->
+        <div id="language-modal" class="modal language-modal">
+            <div class="modal-content language-modal-content">
+                <h2 style="text-align: center; margin-bottom: 2rem; font-family: 'Orbitron', sans-serif; color: var(--secondary-blue);">Tilni tanlang / Choose Language</h2>
+                <div class="language-grid" id="language-grid">
+                    <!-- JavaScript orqali to'ldiriladi -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Test rejimi yozuvi -->
+        <div id="test-mode-badge" style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 9999; background: rgba(255, 165, 0, 0.9); color: black; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; box-shadow: 0 0 20px rgba(255, 165, 0, 0.5);">
+            🧪 TEST REJIMIDA ISHLAMOQDA
+        </div>
+
         <div id="hologram-container"></div>
 
         <main id="main-ui">

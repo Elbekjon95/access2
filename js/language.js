@@ -123,6 +123,9 @@ export function pickVoice(language) {
 }
 
 export function initLanguageSelector() {
+  // Avval til tanlash modalni ko'rsatish
+  showLanguageModal();
+  
   const dropdown = document.getElementById("lang-dropdown");
   if (!dropdown) return;
   const toggle = dropdown.querySelector(".lang-toggle");
@@ -172,4 +175,87 @@ export function initLanguageSelector() {
       toggle.setAttribute("aria-expanded", "false");
     }
   });
+}
+
+
+// Til tanlash modal
+export function showLanguageModal() {
+  const modal = document.getElementById('language-modal');
+  const grid = document.getElementById('language-grid');
+  
+  if (!modal || !grid) return;
+  
+  // Agar til allaqachon tanlangan bo'lsa, modalni ko'rsatmaymiz
+  const savedLang = localStorage.getItem('kiosk_lang');
+  if (savedLang && savedLang !== 'auto') {
+    modal.classList.add('hide');
+    return;
+  }
+  
+  // Tillar ro'yxati
+  const languages = [
+    { code: 'uz', name: "O'zbek", flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#1eb6ff"/><rect y="7" width="30" height="6" fill="#ffffff"/><rect y="13" width="30" height="7" fill="#1eb53a"/><rect y="6.5" width="30" height="1" fill="#ce1126"/><rect y="12.5" width="30" height="1" fill="#ce1126"/></svg>' },
+    { code: 'ru', name: 'Русский', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#ffffff"/><rect y="7" width="30" height="6" fill="#0039a6"/><rect y="13" width="30" height="7" fill="#d52b1e"/></svg>' },
+    { code: 'en', name: 'English', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#012169"/><rect y="8" width="30" height="4" fill="#ffffff"/><rect x="13" width="4" height="20" fill="#ffffff"/><rect y="9" width="30" height="2" fill="#c8102e"/><rect x="14" width="2" height="20" fill="#c8102e"/></svg>' },
+    { code: 'es', name: 'Español', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#c60b1e"/><rect y="5" width="30" height="10" fill="#ffc400"/></svg>' },
+    { code: 'zh', name: '中文', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#de2910"/><circle cx="6" cy="6" r="3" fill="#ffde00"/></svg>' },
+    { code: 'hi', name: 'हिन्दी', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#ff9933"/><rect y="6.7" width="30" height="6.6" fill="#ffffff"/><rect y="13.3" width="30" height="6.7" fill="#138808"/><circle cx="15" cy="10" r="2.2" fill="#000088"/></svg>' },
+    { code: 'ar', name: 'العربية', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#006c35"/><rect x="6" y="9" width="18" height="2" fill="#ffffff"/></svg>' },
+    { code: 'bn', name: 'বাংলা', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#006a4e"/><circle cx="13" cy="10" r="5" fill="#f42a41"/></svg>' },
+    { code: 'pt', name: 'Português', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="12" height="20" fill="#006600"/><rect x="12" width="18" height="20" fill="#ff0000"/></svg>' },
+    { code: 'ja', name: '日本語', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#ffffff"/><circle cx="15" cy="10" r="5" fill="#bc002d"/></svg>' },
+    { code: 'de', name: 'Deutsch', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#000000"/><rect y="6.7" width="30" height="6.6" fill="#dd0000"/><rect y="13.3" width="30" height="6.7" fill="#ffce00"/></svg>' },
+    { code: 'fr', name: 'Français', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="10" height="20" fill="#002395"/><rect x="10" width="10" height="20" fill="#ffffff"/><rect x="20" width="10" height="20" fill="#ed2939"/></svg>' },
+    { code: 'it', name: 'Italiano', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="10" height="20" fill="#009246"/><rect x="10" width="10" height="20" fill="#ffffff"/><rect x="20" width="10" height="20" fill="#ce2b37"/></svg>' },
+    { code: 'ko', name: '한국어', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#ffffff"/><circle cx="15" cy="10" r="5" fill="#c60c30"/></svg>' },
+    { code: 'tr', name: 'Türkçe', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#e30a17"/><circle cx="12" cy="10" r="5" fill="#ffffff"/><circle cx="13.5" cy="10" r="4" fill="#e30a17"/></svg>' },
+    { code: 'ur', name: 'اردو', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#01411c"/><rect width="6" height="20" fill="#ffffff"/><circle cx="17" cy="10" r="4" fill="#ffffff"/></svg>' },
+    { code: 'tg', name: 'Тоҷикӣ', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#d81e05"/><rect y="6.7" width="30" height="6.6" fill="#ffffff"/><rect y="13.3" width="30" height="6.7" fill="#006600"/></svg>' },
+    { code: 'ky', name: 'Кыргызча', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#e8112d"/><circle cx="15" cy="10" r="4.5" fill="#ffcc00"/></svg>' },
+    { code: 'kk', name: 'Қазақша', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#00a3dd"/><circle cx="15" cy="10" r="4.5" fill="#ffcc00"/></svg>' },
+    { code: 'tk', name: 'Türkmençe', flag: '<svg width="60" height="40" viewBox="0 0 30 20"><rect width="30" height="20" fill="#007a3d"/><rect width="7" height="20" fill="#c8102e"/></svg>' }
+  ];
+  
+  // Grid'ni to'ldirish
+  grid.innerHTML = '';
+  languages.forEach(lang => {
+    const card = document.createElement('div');
+    card.className = 'language-option-card';
+    card.innerHTML = `
+      <div class="flag-icon">${lang.flag}</div>
+      <div class="lang-name">${lang.name}</div>
+    `;
+    
+    card.addEventListener('click', () => {
+      selectLanguage(lang.code);
+      modal.classList.add('hide');
+    });
+    
+    grid.appendChild(card);
+  });
+  
+  // Modalni ko'rsatish
+  modal.classList.remove('hide');
+}
+
+function selectLanguage(code) {
+  localStorage.setItem('kiosk_lang', code);
+  
+  // Dropdown'ni yangilash
+  const dropdown = document.getElementById('lang-dropdown');
+  if (dropdown) {
+    dropdown.dataset.value = code;
+    const option = dropdown.querySelector(`[data-value="${code}"]`);
+    if (option) {
+      const labelSlot = dropdown.querySelector('.lang-label');
+      const flagSlot = dropdown.querySelector('.lang-flag');
+      if (labelSlot) labelSlot.textContent = option.dataset.label || option.textContent.trim();
+      if (flagSlot) {
+        const flag = option.querySelector('.flag-icon');
+        if (flag) flagSlot.innerHTML = flag.innerHTML;
+      }
+    }
+  }
+  
+  console.log('[LANG] Til tanlandi:', code);
 }

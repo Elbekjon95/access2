@@ -371,7 +371,7 @@ class AirportNavigation {
 
     if (this.path && this.path.length >= 2) {
       this.ctx.strokeStyle = window.NAV_LINE_COLOR || "#ff3b30";
-      this.ctx.lineWidth = (window.NAV_LINE_WIDTH || 12) * this.pxScale;
+      this.ctx.lineWidth = ((window.NAV_LINE_WIDTH || 12) / 2) * this.pxScale; // 2 barobar kichikroq
       this.ctx.lineCap = "round"; this.ctx.lineJoin = "round";
       
       this.ctx.beginPath();
@@ -399,10 +399,10 @@ class AirportNavigation {
 
       this.ctx.fillStyle = "#007bff";
       this.ctx.beginPath(); 
-      this.ctx.arc(this.path[0].x, this.path[0].y, 16 * this.pxScale, 0, Math.PI * 2); 
+      this.ctx.arc(this.path[0].x, this.path[0].y, 8 * this.pxScale, 0, Math.PI * 2); // 16 -> 8 (2 barobar kichik)
       this.ctx.fill();
       this.ctx.strokeStyle = "white";
-      this.ctx.lineWidth = 3 * this.pxScale;
+      this.ctx.lineWidth = 1.5 * this.pxScale; // 3 -> 1.5
       this.ctx.stroke();
 
       if (this.pathRevealProgress > 0.9) {
@@ -410,14 +410,14 @@ class AirportNavigation {
           if (last) {
             this.ctx.fillStyle = "#ff3b30";
             this.ctx.beginPath(); 
-            this.ctx.arc(last.x, last.y, 22 * this.pxScale, 0, Math.PI * 2); 
+            this.ctx.arc(last.x, last.y, 11 * this.pxScale, 0, Math.PI * 2); // 22 -> 11
             this.ctx.fill();
             this.ctx.strokeStyle = "white";
-            this.ctx.lineWidth = 4 * this.pxScale;
+            this.ctx.lineWidth = 2 * this.pxScale; // 4 -> 2
             this.ctx.stroke();
             this.ctx.fillStyle = "white";
             this.ctx.beginPath();
-            this.ctx.arc(last.x, last.y, 8 * this.pxScale, 0, Math.PI * 2);
+            this.ctx.arc(last.x, last.y, 4 * this.pxScale, 0, Math.PI * 2); // 8 -> 4
             this.ctx.fill();
           }
       }
