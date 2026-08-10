@@ -634,9 +634,6 @@ async function onRecordingStop() {
     const normalized = normalizeTranscription(transcription);
 
     if (normalized && normalized.length >= 2) {
-      if (assistantTextElement) {
-        typewriterEffect(assistantTextElement, normalized);
-      }
       console.log("🎤 STT Eshitdi:", normalized);
       sendMessage(normalized);
       autoCapture();

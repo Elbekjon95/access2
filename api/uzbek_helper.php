@@ -106,16 +106,7 @@ class UzbekDictionaryHelper {
             'hohjit huni' => 'hojatxona',
             'hojat huni' => 'hojatxona',
             'qayirda joylishke' => 'qayerda joylashgan',
-            'qaerda joylishke' => 'qayerda joylashgan',
-            'vi ip' => 'vip',
-            'bi ay pi' => 'vip',
-            'si ay pi' => 'cip',
-            'kafi' => 'kafe',
-            'kafe qayerda' => 'kafe',
-            'dutyfree' => 'duty free',
-            'dyuti fri' => 'duty free',
-            'oshxona' => 'kafe',
-            'tualet' => 'hojatxona'
+            'qaerda joylishke' => 'qayerda joylashgan'
         ];
 
         foreach ($phrases as $wrong => $correct) {
@@ -324,68 +315,48 @@ class UzbekDictionaryHelper {
         return $dbMatch;
     }
 
-    public static function getRelatedCodes($code) {
-        if (empty($code)) return [];
-        $dict = self::loadDictionary();
-        $code = strtoupper($code);
-        
-        // Agar bu shahar kodi bo'lsa (MOW, IST kabi), uning iata_map dagi barcha kodlarini olamiz
-        if (isset($dict['iata_map'][$code])) {
-            $codes = [$code];
-            // Ba'zida iata_map ning o'zida boshqa kodlar ham bo'lishi mumkin (masalan, MOW da SVO, DME bor)
-            foreach ($dict['iata_map'][$code] as $alias) {
-                if (preg_match('/^[A-Z]{3}$/', $alias)) {
-                    $codes[] = $alias;
-                }
-            }
-            return array_unique($codes);
-        }
-        
-        return [$code];
-    }
-
-    /**
-     * IATA koddan inglizcha shahar nomini qaytaradi (ob-havo API uchun).
-     * Masalan: IST → Istanbul, MOW → Moscow, DXB → Dubai
-     */
-    public static function iataToEnglishCity($code) {
-        if (empty($code)) return null;
-        $dict = self::loadDictionary();
-        $code = strtoupper($code);
-        
-        if (!isset($dict['iata_map'][$code])) return null;
-        
-        $aliases = $dict['iata_map'][$code];
-        // Odatda 2-chi element inglizcha nom (1-chi o'zbekcha)
-        // Agar 2 ta alias bo'lsa va 2-chisi IATA kodi bo'lmasa — uni qaytaramiz
-        foreach ($aliases as $i => $alias) {
-            if ($i === 0) continue; // O'zbekcha nom — o'tkazamiz
-            if (preg_match('/^[A-Z]{3}$/', $alias)) continue; // IATA kodi — o'tkazamiz
-            return $alias; // Inglizcha nom
-        }
-        // Agar inglizcha nom topilmasa, birinchi aliasni qaytaramiz
-        return $aliases[0] ?? null;
-    }
-
     private static function findCityInDb($text, $suffixes, $exclusions) {
         if (!function_exists('getDbConnection')) return null;
 
-        try {
-            $pdo = getDbConnection();
-        } catch (Throwable $e) {
-            return null;
+        $cacheFile = __DIR__ . '/../data/airports_list_cache.json';
+        $airportsList = [];
+
+        if (file_exists($cacheFile)) {
+            $airportsList = json_decode(@file_get_contents($cacheFile), true);
+        }
+
+        if (empty($airportsList)) {
+            try {
+                $db = getDbConnection();
+                $rawAirports = $db->find('airports', [
+                    'iata_code' => ['$exists' => true, '$ne' => '']
+                ], [
+                    'sort' => ['scheduled_service' => -1]
+                ]);
+                $airportsList = [];
+                foreach ($rawAirports as $ap) {
+                    $airportsList[] = [
+                        'iata_code' => $ap['iata_code'] ?? '',
+                        'city' => mb_strtolower($ap['city'] ?? '', 'UTF-8'),
+                        'name' => mb_strtolower($ap['name'] ?? '', 'UTF-8')
+                    ];
+                }
+                @file_put_contents($cacheFile, json_encode($airportsList));
+            } catch (Throwable $e) {
+                return null;
+            }
         }
 
         if (preg_match('/\b([A-Z]{3})\b/', strtoupper($text), $m)) {
             $code = $m[1];
-            $stmt = $pdo->prepare("SELECT iata_code FROM airports WHERE iata_code = ? LIMIT 1");
-            $stmt->execute([$code]);
-            if ($stmt->fetch()) return $code;
+            foreach ($airportsList as $ap) {
+                if (strtoupper($ap['iata_code']) === $code) return $code;
+            }
         }
 
         $words = explode(' ', str_replace([',', '.', '!', '?', '-', '_'], ' ', $text));
         foreach ($words as $word) {
-            $word = trim($word);
+            $word = mb_strtolower(trim($word), 'UTF-8');
             if (mb_strlen($word) < 3 || in_array($word, $exclusions, true)) continue;
 
             $stems = [$word];
@@ -398,25 +369,17 @@ class UzbekDictionaryHelper {
             foreach ($stems as $stem) {
                 if (mb_strlen($stem) < 3 || in_array($stem, $exclusions, true)) continue;
 
-                $like = '%' . $stem . '%';
-                $stmt = $pdo->prepare("
-                    SELECT iata_code
-                    FROM airports
-                    WHERE city LIKE ? OR name LIKE ?
-                    ORDER BY scheduled_service DESC,
-                             FIELD(type, 'large_airport','medium_airport','small_airport') ASC
-                    LIMIT 1
-                ");
-                $stmt->execute([$like, $like]);
-                $row = $stmt->fetch(PDO::FETCH_ASSOC);
-                if ($row && !empty($row['iata_code'])) {
-                    return $row['iata_code'];
+                foreach ($airportsList as $ap) {
+                    if (mb_strpos($ap['city'] ?? '', $stem) !== false || mb_strpos($ap['name'] ?? '', $stem) !== false) {
+                        return strtoupper($ap['iata_code']);
+                    }
                 }
             }
         }
 
         return null;
     }
+
 
     public static function detectUzbek($text, $previousMessages = []) {
         if (empty($text)) return false;

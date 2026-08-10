@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 header('Content-Type: application/json');
 error_reporting(E_ALL);
@@ -401,9 +401,16 @@ try {
         exit;
     }
 
-    $pdo = getDbConnection();
-    $stmt = $pdo->prepare("INSERT INTO complaints (full_name, contact, message, transcript, audio_path) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$name, $contact, $message, $transcript ?: null, $audioPathRel]);
+    $db = getDbConnection();
+    $complaintId = $db->insertOne('complaints', [
+        'full_name' => $name,
+        'contact' => $contact,
+        'message' => $message,
+        'transcript' => $transcript ?: null,
+        'audio_path' => $audioPathRel,
+        'status' => 'new',
+        'created_at' => date('Y-m-d H:i:s')
+    ]);
 
     $to = defined('COMPLAINT_EMAIL') ? COMPLAINT_EMAIL : 'elbekroxmonov@gmail.com';
     $subject = "Yangi shikoyat (kiosk): {$name}";
@@ -421,11 +428,11 @@ try {
 
     [$mailSent, $mailInfo, $mailTransport] = sendComplaintEmail($to, $subject, $body, $audioPathAbs, $attachmentName);
     if (!$mailSent) {
-        error_log('Complaint mail send failed for: ' . $to . ' | complaint_id=' . $pdo->lastInsertId() . ' | ' . $mailInfo);
+        error_log('Complaint mail send failed for: ' . $to . ' | complaint_id=' . $complaintId . ' | ' . $mailInfo);
     }
     [$telegramSent, $telegramInfo, $telegramTransport] = sendComplaintToTelegram($name, $contact, $message, $transcript, $audioPathAbs, $audioPathRel);
     if (!$telegramSent) {
-        error_log('Complaint telegram send failed | complaint_id=' . $pdo->lastInsertId() . ' | ' . $telegramInfo);
+        error_log('Complaint telegram send failed | complaint_id=' . $complaintId . ' | ' . $telegramInfo);
     }
 
     echo json_encode([

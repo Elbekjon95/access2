@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 
 /**
  * Uzairports FIDS saytidan reyslarni parsing qilish
@@ -74,7 +74,7 @@ function fetchUzairportsFlights($flightType = 'DEPARTURE') {
  */
 function getCombinedFlights() {
     $cacheFile = __DIR__ . '/../data/uzairports_cache.json';
-    $cacheTtl = 60; // 60 soniya yashash vaqti
+    $cacheTtl = 300; // 5 daqiqa yashash vaqti (oldingi 60 soniya edi)
     
     if (file_exists($cacheFile)) {
         $cached = json_decode(@file_get_contents($cacheFile), true);

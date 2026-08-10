@@ -1,6 +1,6 @@
 <?php
-require_once '../config.php';
-require_once 'uzairports_parser.php'; // Uzairports FIDS parser
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/uzairports_parser.php';
 
 
 header('Content-Type: application/json');
@@ -11,7 +11,7 @@ $lastFlightError = null;
 function fetchFlights() {
     global $lastFlightError;
     $cacheFile = __DIR__ . '/../data/flights_cache.json';
-    $cacheTtl = 30; // seconds
+    $cacheTtl = 300; // 5 daqiqa yashash vaqti (oldingi 30 soniya edi)
 
     if (file_exists($cacheFile)) {
         $cached = json_decode(@file_get_contents($cacheFile), true);
@@ -86,9 +86,6 @@ function fetchFlights() {
 }
 
 function getProcessedFlights($showAll = false) {
-    // Toshkent vaqt zonasini global o'rnatish
-    date_default_timezone_set('Asia/Tashkent');
-    
     $flights = fetchFlights();
     $apiFlights = [];
     if (isset($flights['flights']) && is_array($flights['flights'])) {
@@ -157,14 +154,20 @@ function getProcessedFlights($showAll = false) {
     }
 
     if (!$showAll) {
-        $currentTime = date('H:i');
+        $now = time();
+        $buffer = 20 * 60; // 20 minutlik bufer (yaqinda o'tib ketgan reyslarni ko'rsatish uchun)
         
-        $merged = array_filter($merged, function($f) use ($currentTime) {
+        $merged = array_filter($merged, function($f) use ($now, $buffer) {
             $fTime = $f['time'] ?? '00:00';
-            if ($fTime === 'N/A' || $fTime === '00:00') return true;
+            if ($fTime === 'N/A') return true;
 
-            // Faqat hozirgi vaqtdan keyingi reyslarni ko'rsatish
-            return $fTime > $currentTime;
+            $fTimestamp = strtotime(date('Y-m-d ') . $fTime);
+            
+            if (($now - $fTimestamp) > 12 * 3600) {
+                $fTimestamp += 24 * 3600; // Ertangi kunga o'tkazish
+            }
+            
+            return ($fTimestamp + $buffer) >= $now;
         });
         $merged = array_values($merged);
     }

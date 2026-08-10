@@ -148,6 +148,39 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       })
       .catch((err) => console.error("[MAIN] Scanner error:", err));
+    // Xarita boshqaruv tugmalari (Floating controls)
+    const btnZoomIn = document.getElementById("nav-btn-zoom-in");
+    const btnZoomOut = document.getElementById("nav-btn-zoom-out");
+    const btnCenter = document.getElementById("nav-btn-center");
+
+    if (btnZoomIn) {
+      btnZoomIn.onclick = (e) => {
+        e.stopPropagation();
+        if (window.airportNav) {
+          window.airportNav.scale = Math.min(window.airportNav.maxScale, window.airportNav.scale * 1.3);
+          window.airportNav.userHasPanned = true;
+          window.airportNav.needsRender = true;
+        }
+      };
+    }
+    if (btnZoomOut) {
+      btnZoomOut.onclick = (e) => {
+        e.stopPropagation();
+        if (window.airportNav) {
+          window.airportNav.scale = Math.max(window.airportNav.minScale, window.airportNav.scale * 0.77);
+          window.airportNav.userHasPanned = true;
+          window.airportNav.needsRender = true;
+        }
+      };
+    }
+    if (btnCenter) {
+      btnCenter.onclick = (e) => {
+        e.stopPropagation();
+        if (window.airportNav) {
+          window.airportNav.centerMap();
+        }
+      };
+    }
   }
 
   const mapModal = document.getElementById("map-modal");
@@ -159,7 +192,10 @@ document.addEventListener("DOMContentLoaded", () => {
   if (btnMap)
     btnMap.onclick = () => {
       showModal(mapModal);
-      resetMapView();
+      if (window.airportNav) {
+        window.airportNav.resizeCanvasToContainer();
+        window.airportNav.centerMap();
+      }
     };
   if (btnFlights)
     btnFlights.onclick = () => {
@@ -237,8 +273,6 @@ function fillSidePanels(processedNodes) {
 
     listServices.innerHTML = "";
     listGates.innerHTML = "";
-
-    const gateTypes = ["gate", "entrance", "exit"];
     
     // Alifbo bo'yicha tartiblaymiz
     const sortedNodes = [...processedNodes].sort((a, b) => (a.name || "").localeCompare(b.name || ""));
@@ -250,13 +284,19 @@ function fillSidePanels(processedNodes) {
         item.className = "panel-item";
         
         let icon = "fa-map-marker-alt";
-        if (node.type === "toilet") icon = "fa-restroom";
-        if (node.type === "cafe" || node.type === "restaurant") icon = "fa-utensils";
-        if (node.type === "gate") icon = "fa-plane-departure";
-        if (node.type === "reception" || node.type === "info" || node.type === "counter") icon = "fa-info-circle";
-        if (node.type === "mosque") icon = "fa-mosque";
-        if (node.type === "shop") icon = "fa-shopping-cart";
-        if (node.type === "cip" || node.type === "vip") icon = "fa-couch";
+        const nLower = (node.name || "").toLowerCase();
+        const tLower = (node.type || "").toLowerCase();
+
+        if (tLower === "toilet" || nLower.includes("hojatxona") || nLower.includes("toilet")) icon = "fa-restroom";
+        else if (tLower === "cafe" || tLower === "restaurant" || nLower.includes("kafe") || nLower.includes("restoran")) icon = "fa-utensils";
+        else if (tLower === "counter" || nLower.includes("stoyka") || /^\d+-\d+/.test(nLower)) icon = "fa-id-card";
+        else if (tLower === "gate" || nLower.includes("darvoza") || nLower.includes("gate")) icon = "fa-plane-departure";
+        else if (tLower === "mosque" || nLower.includes("masjid") || nLower.includes("namoz")) icon = "fa-mosque";
+        else if (tLower === "shop" || nLower.includes("duty") || nLower.includes("shop")) icon = "fa-shopping-cart";
+        else if (tLower === "cip" || tLower === "vip" || nLower.includes("cip") || nLower.includes("vip") || nLower.includes("anor") || nLower.includes("anjir")) icon = "fa-couch";
+        else if (tLower === "medical" || nLower.includes("tibbiyot") || nLower.includes("medpunkt")) icon = "fa-briefcase-medical";
+        else if (tLower === "reception" || tLower === "info" || nLower.includes("info") || nLower.includes("axborot")) icon = "fa-info-circle";
+        else if (tLower === "baggage" || nLower.includes("bagaj")) icon = "fa-suitcase";
 
         item.innerHTML = `<i class="fas ${icon}"></i><span>${node.name}</span>`;
         
@@ -269,18 +309,19 @@ function fillSidePanels(processedNodes) {
             
             console.log("[UI] Clicked:", node.name, "| Coords:", px, py);
             
-            // Tugma bosilganini vizual ko'rsatish
             item.style.background = "rgba(0, 198, 255, 0.3)";
             setTimeout(() => { item.style.background = ""; }, 200);
 
             if (window.airportNav && typeof window.airportNav.navigateTo === 'function') {
                 window.airportNav.navigateTo(px, py, node.name);
-            } else {
-                console.error("[UI] window.airportNav.navigateTo topilmadi!");
+            } else if (window.airportNav) {
+                window.airportNav.findPath(node.name);
             }
         };
 
-        if (gateTypes.includes(node.type) || (node.name && node.name.toLowerCase().includes("gate"))) {
+        const isGate = (tLower === "gate" || nLower.includes("gate") || nLower.includes("darvoza")) && !nLower.includes("stoyka") && !/^\d+-\d+/.test(nLower);
+
+        if (isGate) {
             listGates.appendChild(item);
         } else {
             listServices.appendChild(item);

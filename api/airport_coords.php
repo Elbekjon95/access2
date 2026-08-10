@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');
 
 $codes = [];
@@ -27,11 +27,8 @@ if (empty($codes)) {
 }
 
 try {
-    $pdo = getDbConnection();
-    $placeholders = implode(',', array_fill(0, count($codes), '?'));
-    $stmt = $pdo->prepare("SELECT iata_code, latitude_deg, longitude_deg FROM airports WHERE iata_code IN ($placeholders)");
-    $stmt->execute($codes);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $db = getDbConnection();
+    $rows = $db->find('airports', ['iata_code' => ['$in' => $codes]]);
 
     $result = [];
     foreach ($rows as $row) {

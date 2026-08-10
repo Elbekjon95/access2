@@ -1,6 +1,6 @@
 <?php
 
-require_once 'chat_helpers.php';
+require_once __DIR__ . '/../chat_helpers.php';
 
 
 class ChatHandler {
@@ -70,22 +70,18 @@ class ChatHandler {
             $answer = str_replace($ml[0], '', $answer);
         }
 
-        // QR kodni aniqlash (Cargo, CIP, FASTTRACK, Helicopters, SILK)
-        if (preg_match('/\[QR:(.*?)\]/', $answer, $mq)) {
-            $response['qr'] = trim($mq[1]);
-            $answer = str_replace($mq[0], '', $answer);
-        }
-
         // Reys yo'nalishi (Yer shari 3D) - Barcha teg`larni tozalash
-        if (preg_match_all('/\[ROUTE:([A-Z]{3,10})-([A-Z]{3,10})\]/i', $answer, $matches, PREG_SET_ORDER)) {
+        if (preg_match_all('/\[ROUTE:(.*?)-(.*?)\]/i', $answer, $matches, PREG_SET_ORDER)) {
             $response['show_earth_route'] = true;
             // Birinchisini asosiy yo'nalish sifatida olamiz
-            $fromRaw = strtoupper(trim($matches[0][1]));
-            $toRaw = strtoupper(trim($matches[0][2]));
+            $orig = trim($matches[0][1]);
+            $dest = trim($matches[0][2]);
             
-            // Kodlarni 3 harfga majburlash (agar to'liq nom yozilgan bo'lsa)
-            $response['origin'] = UzbekDictionaryHelper::findCity($fromRaw) ?: substr($fromRaw, 0, 3);
-            $response['destination'] = UzbekDictionaryHelper::findCity($toRaw) ?: substr($toRaw, 0, 3);
+            $origCode = (strlen($orig) === 3 && ctype_alpha($orig)) ? strtoupper($orig) : (UzbekDictionaryHelper::findCity($orig) ?: 'TAS');
+            $destCode = (strlen($dest) === 3 && ctype_alpha($dest)) ? strtoupper($dest) : (UzbekDictionaryHelper::findCity($dest) ?: $dest);
+
+            $response['origin'] = $origCode;
+            $response['destination'] = $destCode;
             
             // Barchasini matndan olib tashlaymiz
             foreach ($matches as $m) {
@@ -93,26 +89,24 @@ class ChatHandler {
             }
         } else {
             // Fallback: Agar AI yo'nalish tegini yozishni unutgan bo'lsa
-            // Avval AI javobidan qidiramiz (chunki AI typo-larni to'g'irlaydi)
             $cityCode = UzbekDictionaryHelper::findCity($answer);
             if (!$cityCode) {
-                // Keyin foydalanuvchi xabaridan
                 $cityCode = UzbekDictionaryHelper::findCity($userMessage);
             }
             
-            if ($cityCode && $cityCode !== 'TAS' && preg_match('/\b(reys|reyslar|parvoz|uchish|uchishni|uchadi|kelish|keladi|qonadi|yo\'nalish|yonalish)\b/ui', $userMessage . ' ' . $answer)) {
+            if ($cityCode && $cityCode !== 'TAS' && preg_match('/(reys|parvoz|uch|kel|uchad|kelad|qonad|yo\'nalish|yonalish)/ui', $userMessage . ' ' . $answer)) {
                 $response['show_earth_route'] = true;
                 
                 $msgCombined = mb_strtolower($userMessage . ' ' . $answer, 'UTF-8');
-                $isArrival = false; // Default: Ketish TAS -> Shahar
+                $isArrival = false;
 
-                if (preg_match('/\b(toshkentgachan|toshkentdan|tashkentdan)\b/ui', $msgCombined)) {
+                if (preg_match('/\b(toshkentdan|tashkentdan)\b/ui', $msgCombined)) {
                     $isArrival = false; 
                 } elseif (preg_match('/\b(toshkentga|tashkentga)\b/ui', $msgCombined)) {
                     $isArrival = true;  
-                } elseif (preg_match('/\b(keladi|qonadi|kelish|kelgan)\b/ui', $msgCombined)) {
+                } elseif (preg_match('/(kelad|qonad|kelish|kelgan)/ui', $msgCombined)) {
                     $isArrival = true;  
-                } elseif (preg_match('/\b(uchadi|uchish|ketish|ketadi)\b/ui', $msgCombined)) {
+                } elseif (preg_match('/(uchad|uchish|ketish|ketad)/ui', $msgCombined)) {
                     $isArrival = false; 
                 }
 
@@ -122,45 +116,13 @@ class ChatHandler {
         }
 
         $response['reply'] = $answer;
-        
-        // UCHIB KETISH REYSLARI UCHUN OB-HAVO: Agar manzil shahri aniqlangan bo'lsa va bu departure (TAS -> Shahar) bo'lsa,
-        // manzil shaharning ob-havosini avtomatik qo'shamiz (faqat AI javobida [WEATHER] tegi BO'LMASA)
-        if (!empty($response['destination']) && $response['destination'] !== 'TAS' 
-            && (!empty($response['origin']) && $response['origin'] === 'TAS')
-            && !preg_match('/\\[WEATHER:/i', $answer)) {
-            
-            $destCode = $response['destination'];
-            $weatherCityEn = UzbekDictionaryHelper::iataToEnglishCity($destCode);
-            
-            if ($weatherCityEn) {
-                require_once __DIR__ . '/WeatherProcessor.php';
-                $weatherData = WeatherProcessor::getWeather($weatherCityEn, $lang);
-                $weatherText = WeatherProcessor::formatWeather($weatherData, $lang);
-                
-                if (!isset($weatherData['error'])) {
-                    // Ob-havo ma'lumotini javob oxiriga qo'shamiz
-                    $cityNameLocal = WeatherProcessor::translateCityToUz($weatherCityEn);
-                    if ($lang === 'uz') {
-                        $response['reply'] .= "\n\n🌤 {$cityNameLocal} ob-havosi: {$weatherText}.";
-                    } elseif ($lang === 'ru') {
-                        $response['reply'] .= "\n\n🌤 Погода в {$weatherCityEn}: {$weatherText}.";
-                    } else {
-                        $response['reply'] .= "\n\n🌤 Weather in {$weatherCityEn}: {$weatherText}.";
-                    }
-                }
-            }
-        }
 
-        // Final "mop-up": Faqat maxsus tizim teglari (ROUTE, LOCATION, WEATHER, QR) bo'lsa tozalaymiz
-        $response['reply'] = preg_replace('/\[(ROUTE|LOCATION|WEATHER|QR):[^\]]+\]/i', '', $response['reply']);
-        // SYSTEM_NOTE va shunga o'xshash tizim izohlarini olib tashlaymiz
-        $response['reply'] = preg_replace('/>>?\s*SYSTEM_NOTE\s*:.*$/mi', '', $response['reply']);
-        $response['reply'] = preg_replace('/>>?\s*SYSTEM[_\s]?NOTE.*$/mi', '', $response['reply']);
-        $response['reply'] = trim($response['reply']);
-
-        // Agar lokatsiya topilmasa, mavjud mapPoints dan qidirish
+        // Agar lokatsiya hali topilmagan bo'lsa, avval foydalanuvchi so'rovidan, keyin AI javobidan qidirish
         if (empty($response['location'])) {
             $nav = AirportNavigator::handle($userMessage, $this->mapPoints, $lang);
+            if (!$nav || empty($nav['location'])) {
+                $nav = AirportNavigator::handle($answer, $this->mapPoints, $lang);
+            }
             if ($nav && !empty($nav['location'])) {
                 $response['location'] = $nav['location'];
             }
@@ -184,44 +146,31 @@ class ChatHandler {
             'uz' => "Siz Toshkent aeroporti (TAS) yordamchisisiz. 
                     KAT'IY QOIDALAR:
                     1. FAQAT O'ZBEK TILIDA javob bering.
-                    2. HAR BIR REYS UCHUN [ROUTE:Origin-Dest] tegini qo'shish majburiy, LEKIN JAVOBINGIZNING ENG OXIRIGA, yangi qatorda yozing. DIQQAT: Siz audio asistent bo'lganingiz uchun TEGLARNI ASLO OVOZ CHIQARIB O'QIMANG! Qavslarni o'qib yubormang!
-                    3. NAVIGATSIYA: Agar joy haqida so'ralsa, eng oxirgi qatorda [LOCATION:ExactPointName] deb teg qoldiring. BUNIXAM O'QIMANG.
-                    4. Markdown belgilarini (** , * , #) UMUMAN ishlatmang!
-                    5. Savollarga juda QISQA, luqma tashlamasdan, aniq javob bering.
-                    6. XIZMATLAR (CIP/VIP, Fast Track, mehmonxona): Avval xizmat haqida BATAFSIL ma'lumot bering (narx, qanday sotib olish, qulayliklar). Keyin agar batafsil ma'lumot uchun QR kod mavjud bo'lsa, eng oxirida [QR:Name] tegini qo'shing va OVOZDA O'QIMANG.
-                    7. Statuslarni (SCH, ARR, DEP) 'Jadval bo\'yicha', 'Uchib ketdi' deb bering.
-                    8. QR-KODLAR: Agar Cargo, CIP, FASTTRACK, Helicopters so'ralsa eng oxirda [QR:Name] tegini yozing va OVOZDA O'QIMANG.
-                    9. UCHIB KETISH OB-HAVOSI: tizim avtomat qo'shadi, siz gapirmang.
-                    10. SYSTEM_NOTE, >> yoki boshqa tizim izohlarini ASLO yozmang. Faqat foydalanuvchiga yo'naltirilgan javob yozing.
-                    10. REGISTRATSIYA STOYKALAR: Agar reys haqida so'ralsa va stoyka (C:) ma'lumoti mavjud bo'lsa, javobda ALBATTA stoyka raqamini aytib bering. Masalan: \"Registratsiya 12-14 stoykalarida\".
+                    2. HAR BIR REYS UCHUN [ROUTE:Origin-Dest] tegini qo'shish ABSOLYUTNO MAJBURIY! Toshkentdan uchayotganlar uchun [ROUTE:TAS-Shahar], Toshkentga kelayotganlar uchun [ROUTE:Shahar-TAS] deb yozing.
+                    3. Aeroport ichidagi har qanday joy (stoyka, hojatxona, kafe, cip, vip, masjid, darvoza va h.k.) haqida so'ralsa, javobingiz oxiriga [LOCATION:JoyNomi] tegini qo'shing (Masalan: [LOCATION:1-10], [LOCATION:Toilet], [LOCATION:CIP]). Bu xaritani avtomatik ochish uchun shart!
+                    4. Markdown belgilarini (** , * , #) UMUMAN ishlatmang! Matnni oddiy, lekin chiroyli tarzda yozing.
+                    5. Savollarga birinchi qisqa, to'g'ridan-to'g'ri va aniq lo'nda javob bering.
+                    6. Agar ob-havo haqida so'rashsa, albatta [WEATHER:ShaharNomiEn] tegini qo'shing.
                     DATA:
                     $locationContext
-                    $flightContext
-                    KNOWLEDGE BASE:
-                    $knowledgeContext",
-            'ru' => "Вы аудио помощник аэропорта TAS. 
+                    $flightContext",
+            'ru' => "Вы помощник аэропорта TAS. 
                     ПРАВИЛА:
                     1. Ответ ТОЛЬКО на РУССКОМ.
-                    2. ОБЯЗАТЕЛЬНО добавляйте [ROUTE:Origin-Dest] В САМЫЙ КОНЕЦ ответа! ВНИМАНИЕ: НЕ ПРОИЗНОСИТЕ ТЕГИ В АУДИО ОЗВУЧКЕ! Скобки читать запрещено!
-                    3. НАВИГАЦИЯ: Добавьте в КОНЕЦ ответа [LOCATION:ExactPointName] если место есть в LOCATIONS. НЕ ОЗВУЧИВАЙТЕ ЕГО.
-                    4. Пишите коротко. Без Markdown.
-                    7. НЕ пишите SYSTEM_NOTE, >> или любые системные комментарии. Только ответ для пользователя.
-                    5. УСЛУГИ (CIP/VIP, Fast Track, отель): Сначала дайте ПОДРОБНУЮ информацию (цена, как купить, удобства). Затем, если есть QR-код для деталей, добавьте [QR:Name] в конце и НЕ ЧИТАЙТЕ ЕГО В АУДИО.
-                    6. QR-КОДЫ: Добавьте [QR:Name] в конце и НЕ ЧИТАЙТЕ ЕГО В АУДИО.
+                    2. ОБЯЗАТЕЛЬНО добавляйте [ROUTE:Origin-Dest] для каждого рейса!
+                    3. Если спрашивают про любое место в аэропорту (стойки, туалет, кафе, cip, vip, гейт и т.д.), ОБЯЗАТЕЛЬНО добавьте тег [LOCATION:НазваниеТочки] в конец ответа.
+                    4. Пишите коротко, по факту и прямо. Не используйте много символов ** и *.
+                    5. Если спрашивают про погоду, добавьте тег [WEATHER:CityNameEn].
                     ДАННЫЕ:
                     $locationContext
-                    $flightContext
-                    БАЗА ЗНАНИЙ:
-                    $knowledgeContext",
-            'en' => "You are TAS audio assistant. 
+                    $flightContext",
+            'en' => "You are TAS airport assistant. 
                     STRICT RULES:
                     1. Respond ONLY in ENGLISH.
-                    2. Include [ROUTE:Origin-Dest] at the VERY END. Do NOT read tags out loud in the audio!
-                    3. NAVIGATION: Append [LOCATION:ExactPointName] to the END. Do NOT speak this tag.
-                    4. Provide very short answers. No markdown.
-                    5. SERVICES (CIP/VIP, Fast Track, hotel): First provide DETAILED information (price, how to buy, amenities). Then, if QR code available for details, append [QR:Name] at the end. Do NOT read it.
-                    6. QR CODES: Append [QR:Name] to the end. Do NOT read it.
-                    7. NEVER write SYSTEM_NOTE, >> or any system comments. Only user-facing response.
+                    2. For EVERY flight you mention, include [ROUTE:Origin-Dest] tag.
+                    3. If asked about any place inside the airport (check-in counter, toilet, cafe, cip, gate etc.), you MUST include [LOCATION:PointName] at the end of your response.
+                    4. Provide short, precise, and direct answers without extra markdown symbols.
+                    5. If asked about the weather, include [WEATHER:CityNameEn].
                     DATA:
                     $locationContext
                     $flightContext
@@ -248,45 +197,61 @@ class ChatHandler {
             return strcmp($a['time'] ?? '00:00', $b['time'] ?? '00:00');
         });
 
-        // 2. Agar foydalanuvchi ma'lum bir shaharni so'rayotgan bo'lsa, o'sha shaharni birinchi o'ringa chiqarish
+        // Hozirgi vaqtdan keyingi yuz beradigan reyslarni birinchi o'ringa qo'yish
+        $currentTime = date('H:i');
+        $upcomingFlights = [];
+        $pastFlights = [];
+        foreach($flights as $f) {
+            if (($f['time'] ?? '00:00') >= $currentTime) {
+                $upcomingFlights[] = $f;
+            } else {
+                $pastFlights[] = $f;
+            }
+        }
+        $flights = array_merge($upcomingFlights, $pastFlights);
+
+        // 2. Agar foydalanuvchi ma'lum bir shaharni/kodni so'rayotgan bo'lsa, o'sha shaharni birinchi o'ringa chiqarish
         $cityCode = UzbekDictionaryHelper::findCity($userMessage);
+        $relevantsAdded = false;
         if ($cityCode) {
             $relevant = [];
             $others = [];
-            $relatedCodes = UzbekDictionaryHelper::getRelatedCodes($cityCode);
-            
             foreach ($flights as $f) {
-                $isMatch = false;
-                foreach ($relatedCodes as $rc) {
-                    if (stripos($f['from'], $rc) !== false || stripos($f['to'], $rc) !== false) {
-                        $isMatch = true;
-                        break;
-                    }
-                }
-                
-                if ($isMatch) {
+                // 'to' yoki 'from' da shahar/aviakompaniya kodi qatnashganini tekshirish
+                if (stripos($f['from'] ?? '', $cityCode) !== false || stripos($f['to'] ?? '', $cityCode) !== false ||
+                    stripos($f['flight_no'] ?? '', $cityCode) !== false) {
                     $relevant[] = $f;
                 } else {
                     $others[] = $f;
                 }
             }
             $flights = array_merge($relevant, $others);
+            $relevantsAdded = count($relevant) > 0;
         }
+
+        // Tizim tez ishlashi uchun LLM tokenini tejaymiz.
+        // Agar shahar so'ragan bo'lsa, 30 ta ko'rsatamiz. Aks holda faqat keyingi 15 ta reys yetarli.
+        $limit = $relevantsAdded ? 30 : 15;
 
         $ctx = "FLIGHTS (Current Time: " . date('H:i') . "):\n";
         $ctx .= "Note: [departure] means TAS -> City, [arrival] means City -> TAS.\n";
-        foreach (array_slice($flights, 0, 20) as $f) {
-            $checkin = $f['checkin_counters'] ?? 'N/A';
-            $ctx .= "- [{$f['type']}] {$f['flight_no']}|{$f['from']}->{$f['to']}|{$f['time']}|G:{$f['gate']}|C:{$checkin}|S:{$f['status']}\n";
+        foreach (array_slice($flights, 0, $limit) as $f) {
+            $ctx .= "- [{$f['type']}] {$f['flight_no']}|{$f['from']}->{$f['to']}|{$f['time']}|G:{$f['gate']}|S:{$f['status']}\n";
         }
         return $ctx;
     }
 
+
     private function finalizeResponse($response, $message, $lang, $backend) {
         $captureId = $this->getLastCaptureId();
         
-        $stmt = $this->pdo->prepare("INSERT INTO chats (user_message, ai_response, language, capture_id) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$message, $response['reply'], $lang, $captureId]);
+        $this->pdo->insertOne('chats', [
+            'user_message' => $message,
+            'ai_response' => $response['reply'],
+            'language' => $lang,
+            'capture_id' => $captureId,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
         
         $response['language'] = $lang;
         $response['ai_backend'] = $backend;
@@ -294,8 +259,12 @@ class ChatHandler {
     }
 
     private function getLastCaptureId() {
-        $stmt = $this->pdo->query("SELECT id FROM customer_captures WHERE captured_at > NOW() - INTERVAL 40 SECOND ORDER BY id DESC LIMIT 1");
-        $capture = $stmt->fetch();
-        return $capture ? $capture['id'] : null;
+        $recentTime = date('Y-m-d H:i:s', time() - 40);
+        $capture = $this->pdo->findOne('customer_captures', [
+            'captured_at' => ['$gt' => $recentTime]
+        ], [
+            'sort' => ['captured_at' => -1, '_id' => -1]
+        ]);
+        return $capture ? ($capture['id'] ?? (string)$capture['_id']) : null;
     }
 }

@@ -1,9 +1,18 @@
+let _typewriterTimer = null;
+
+export function stopTypewriter() {
+  if (_typewriterTimer) {
+    clearTimeout(_typewriterTimer);
+    _typewriterTimer = null;
+  }
+}
+
 export function typewriterEffect(element, html, speed = 15) {
   if (!element || !html) return;
+  stopTypewriter();
   element.innerHTML = "";
   element.classList.add("typing");
   
-  // Tag-larni saqlab qolish uchun vaqtinchalik div-dan foydalanamiz
   const temp = document.createElement("div");
   temp.innerHTML = html;
   const nodes = Array.from(temp.childNodes);
@@ -18,20 +27,20 @@ export function typewriterEffect(element, html, speed = 15) {
         if (charIdx < node.textContent.length) {
           element.innerHTML += node.textContent.charAt(charIdx);
           charIdx++;
-          setTimeout(typeChar, speed);
+          _typewriterTimer = setTimeout(typeChar, speed);
         } else {
           nodeIdx++;
           charIdx = 0;
-          setTimeout(typeChar, 0);
+          _typewriterTimer = setTimeout(typeChar, 0);
         }
       } else {
-        // Element tugunini (span, strong va h.k.) birdaniga qo'shamiz
         element.appendChild(node.cloneNode(true));
         nodeIdx++;
-        setTimeout(typeChar, speed * 2);
+        _typewriterTimer = setTimeout(typeChar, speed * 2);
       }
     } else {
       element.classList.remove("typing");
+      _typewriterTimer = null;
     }
   };
   typeChar();

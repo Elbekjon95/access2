@@ -1,69 +1,52 @@
 <?php
-require_once '../config.php';
-session_start();
-
-if (!isset($_SESSION['admin_id'])) {
-    header("Location: login.php");
-    exit;
-}
+require_once 'classes/AdminPage.php';
+$page = new AdminPage("Dashboard", "dashboard");
 
 // Statistika ma'lumotlarini olish
-$stmt = $pdo->query("SELECT language, COUNT(*) as count FROM chats GROUP BY language");
-$langStats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$db = $page->getDb();
 
-$stmt = $pdo->query("SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count FROM chats GROUP BY month ORDER BY month DESC LIMIT 6");
-$monthlyStats = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+$langAgg = $db->aggregate('chats', [
+    ['$group' => ['_id' => '$language', 'count' => ['$sum' => 1]]]
+]);
+$langStats = [];
+foreach ($langAgg as $item) {
+    $lang = $item['_id'] ?: 'unknown';
+    $langStats[$lang] = (int)$item['count'];
+}
+
+$chatsAll = $db->find('chats', [], ['projection' => ['created_at' => 1], 'sort' => ['created_at' => -1]]);
+$monthlyStats = [];
+foreach ($chatsAll as $ch) {
+    $created = $ch['created_at'] ?? '';
+    $month = substr((string)$created, 0, 7);
+    if ($month && preg_match('/^\d{4}-\d{2}$/', $month)) {
+        $monthlyStats[$month] = ($monthlyStats[$month] ?? 0) + 1;
+    }
+}
+$monthlyStats = array_slice($monthlyStats, 0, 6, true);
 
 // So'nggi shikoyatlar
-$stmt = $pdo->query("SELECT * FROM complaints ORDER BY created_at DESC LIMIT 5");
-$complaints = $stmt->fetchAll();
+$complaints = $db->find('complaints', [], [
+    'sort' => ['created_at' => -1, '_id' => -1],
+    'limit' => 5
+]);
 
 // Xarita rasmi
-$mapImagePath = '../img/airport_map.jpg';
-$stmt = $pdo->query("SELECT image_path FROM maps LIMIT 1");
-$mapRow = $stmt->fetch(PDO::FETCH_ASSOC);
-if ($mapRow && !empty($mapRow['image_path'])) {
-    $mapImagePath = '../' . ltrim($mapRow['image_path'], '/\\');
-}
-?>
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-    <meta charset="UTF-8">
-    <title>ACCSESS - Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+$mapImagePath = '../img/airport_map_opt.jpg';
+
+$extra_head = '
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --sidebar-w: 250px; --accent: #00c6ff; --bg: #050a14; --panel: rgba(255,255,255,0.05); }
-        body { font-family: 'Outfit', sans-serif; background: var(--bg); color: white; margin: 0; display: flex; }
-        
-        aside { width: var(--sidebar-w); height: 100vh; background: var(--panel); border-right: 1px solid rgba(255,255,255,0.1); padding: 2rem 1rem; position: fixed; }
-        .logo { font-size: 1.5rem; font-weight: 700; color: var(--accent); margin-bottom: 3rem; text-align: center; }
-        nav a { display: block; padding: 12px 20px; color: rgba(255,255,255,0.7); text-decoration: none; border-radius: 10px; margin-bottom: 10px; transition: 0.3s; }
-        nav a:hover, nav a.active { background: var(--accent); color: white; }
-        
-        main { flex: 1; margin-left: var(--sidebar-w); padding: 3rem; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-bottom: 3rem; }
         .chart-card { background: var(--panel); padding: 2rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        th { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; }
         .status-pill { padding: 4px 10px; border-radius: 5px; font-size: 0.75rem; background: rgba(0,198,255,0.2); }
-
-        /* Modal for Camera Test */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
         .modal.active { display: flex; }
         .modal-content { background: #0a1220; padding: 2rem; border-radius: 20px; border: 1px solid var(--accent); width: 90%; max-width: 600px; position: relative; }
         .close-btn { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; cursor: pointer; color: #ff5252; }
         #test-video { width: 100%; border-radius: 10px; background: #000; border: 1px solid rgba(255,255,255,0.1); }
         .cam-status { margin-top: 15px; padding: 10px; border-radius: 8px; font-size: 0.9rem; }
-        .cam-status.ok { background: rgba(0, 255, 136, 0.1); color: #00ff88; border: 1px solid #00ff88; }
-        .cam-status.err { background: rgba(255, 82, 82, 0.1); color: #ff5252; border: 1px solid #ff5252; }
         .earth-btn { background: var(--accent); color: black; font-weight: 600; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
-        .earth-btn.ghost { background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
-        .map-test-card { background: var(--panel); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem; }
         #admin-map-wrapper { width: 100%; height: 600px; overflow: hidden; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; display: flex; justify-content: center; align-items: center; padding: 10px; }
         #admin-map-canvas { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; }
         .point-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
@@ -72,36 +55,25 @@ if ($mapRow && !empty($mapRow['image_path'])) {
         .point-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 10px; border-radius: 999px; cursor: pointer; font-size: 0.8rem; }
         .point-btn.active { background: var(--accent); color: black; font-weight: 600; }
     </style>
-</head>
-<body>
-    <aside>
-        <div class="logo">ACCSESS ADMIN</div>
-        <nav>
-            <a href="index.php" class="active"><i class="fas fa-chart-line"></i> Dashboard</a>
-            <a href="chats.php"><i class="fas fa-comments"></i> Chat Tarixi</a>
-            <a href="complaints.php"><i class="fas fa-exclamation-circle"></i> Shikoyatlar</a>
-            <a href="map.php"><i class="fas fa-map-marked-alt"></i> Xarita Sozlamalari</a>
-            <a href="json_import.php"><i class="fas fa-file-import"></i> JSON Import</a>
-            <a href="earth.php"><i class="fas fa-globe"></i> 3D Yer</a>
-            <a href="users.php"><i class="fas fa-users"></i> Adminlar</a>
-            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
-            <a href="../index.php" style="color: var(--accent);"><i class="fas fa-external-link-alt"></i> Kioskga o'tish</a>
-            <a href="logout.php" style="margin-top: 20px; color: #ff5252;"><i class="fas fa-sign-out-alt"></i> Chiqish</a>
-        </nav>
-    </aside>
+';
 
-    <main>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h1>Xush kelibsiz, <?php echo $_SESSION['admin_name']; ?>!</h1>
+$page->renderHeader($extra_head);
+$page->renderSidebar();
+?>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>Xush kelibsiz, <?php echo $_SESSION['admin_name']; ?>!</h1>
             <div style="display: flex; gap: 10px;">
                 <button onclick="testTTS()" class="status-pill" id="btn-test-tts" style="cursor: pointer; background: #1eb6ff; color: white; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
                     <i class="fas fa-volume-up"></i> UZBEKVOICE
                 </button>
+                <button onclick="testIFlytekTTS()" class="status-pill" id="btn-test-iflytek" style="cursor: pointer; background: #00c6ff; color: black; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
+                    <i class="fas fa-bolt"></i> iFLYTEK TEST
+                </button>
                 <button onclick="testSTT()" class="status-pill" id="btn-test-stt" style="cursor: pointer; background: #ff5252; color: white; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
                     <i class="fas fa-microphone"></i> UZBEKOVOZI STT
                 </button>
-                <button onclick="openGeminiTts()" class="status-pill" id="btn-test-gemini" style="cursor: pointer; background: #6f42c1; color: white; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
-                    <i class="fas fa-magic"></i> GEMINI TEST
+                <button onclick="testIFlytekSTT()" class="status-pill" id="btn-test-iflytek-stt" style="cursor: pointer; background: #00c6ff; color: black; font-weight: 600; padding: 8px 15px; border: none; font-size: 0.85rem;">
+                    <i class="fas fa-headphones"></i> iFLYTEK STT
                 </button>
                 <button onclick="openCamTest()" class="status-pill" style="cursor: pointer; background: rgba(255,255,255,0.1); color: white; font-weight: 600; padding: 8px 15px; border: 1px solid rgba(255,255,255,0.2); font-size: 0.85rem;">
                     <i class="fas fa-camera"></i> KAMERA
@@ -138,7 +110,25 @@ if ($mapRow && !empty($mapRow['image_path'])) {
         </div>
         <?php endif; ?>
 
-
+        <div class="map-test-card">
+            <h3>Xarita Sozlamalari</h3>
+            <div style="margin-bottom: 1rem; display: flex; gap: 10px; align-items: center;">
+                <input type="file" id="mapUpload" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="uploadMap()">
+                <button class="earth-btn" onclick="document.getElementById('mapUpload').click()"><i class="fas fa-upload"></i> Harita Yuklash</button>
+                <span id="uploadStatus" style="font-size: 0.85rem; opacity: 0.7;"></span>
+            </div>
+            <div id="admin-map-wrapper">
+                <canvas id="admin-map-canvas"></canvas>
+            </div>
+            <div class="point-toolbar">
+                <input type="text" id="pointSearch" placeholder="Search point (e.g., Gate B2)">
+                <button class="earth-btn ghost" onclick="resetAdminPath()">Reset</button>
+            </div>
+            <div id="admin-point-list" class="point-list"></div>
+            <p style="font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-top: 10px;">
+                * Nuqtani bosing — yo'nalish kioskdan tanlangan nuqtaga chiziladi.
+            </p>
+        </div>
 
         <div class="chart-card">
             <h3>So'nggi Shikoyatlar</h3>
@@ -166,41 +156,6 @@ if ($mapRow && !empty($mapRow['image_path'])) {
             </table>
         </div>
     </main>
-
-    <!-- Gemini TTS Modal -->
-    <div id="geminiTtsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeGeminiTts()">&times;</span>
-            <h2 style="color: var(--accent); margin-top: 0;"><i class="fas fa-magic"></i> Gemini TTS Test</h2>
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.8);">Matn kiriting:</label>
-                <textarea id="gemini-tts-text" style="width: 100%; height: 120px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; color: white; padding: 12px; font-family: inherit; resize: none;" placeholder="Ovozlantirish uchun matn yozing..."></textarea>
-            </div>
-            <div style="margin-bottom: 25px;">
-                <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.8);">Suhandonni tanlang:</label>
-                <select id="gemini-tts-voice" style="width: 100%; background: #0a1220; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: white; padding: 10px; cursor: pointer;">
-                    <option value="">Yuklanmoqda...</option>
-                </select>
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button onclick="closeGeminiTts()" style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">Yopish</button>
-                <button id="btn-gemini-play" onclick="playGeminiTts()" style="background: var(--accent); color: black; border: none; padding: 10px 25px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                    <i class="fas fa-play"></i> Ovozlantirish
-                </button>
-            </div>
-            <div id="gemini-status" style="margin-top: 15px; font-size: 0.85rem; color: rgba(255,255,255,0.5);"></div>
-        </div>
-    </div>
-
-    <!-- Camera Test Modal -->
-    <div id="camTestModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeCamTest()">&times;</span>
-            <h2 style="color: var(--accent); margin-top: 0;"><i class="fas fa-camera"></i> Kamera Testi</h2>
-            <video id="test-video" autoplay playsinline></video>
-            <div id="camStatus" class="cam-status"></div>
-        </div>
-    </div>
 
     <script>
         window.API_BASE = "../";
@@ -307,6 +262,87 @@ if ($mapRow && !empty($mapRow['image_path'])) {
             }
         }
 
+        async function testIFlytekTTS() {
+            const btn = document.getElementById('btn-test-iflytek');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ...';
+            btn.disabled = true;
+
+            console.log("iFlytek TTS Test boshlandi...");
+            try {
+                // 1. Get Auth URL
+                const authRes = await fetch('../api/iflytek_auth.php?type=tts');
+                const authData = await authRes.json();
+                if (!authData.url) throw new Error("URL olinmadi");
+
+                console.log("Auth URL olindi:", authData.url);
+
+                // 2. WebSocket Connection
+                const socket = new WebSocket(authData.url);
+                let audioChunks = [];
+
+                socket.onopen = () => {
+                   console.log("WS Ulandi, so'rov yuborilmoqda...");
+                   const params = {
+                       "common": { "app_id": "<?php echo IFLYTEK_APPID; ?>" },
+                       "business": { 
+                           "aue": "raw", 
+                           "vcn": "xiaoyan", 
+                           "speed": 50,
+                           "pitch": 50,
+                           "volume": 50,
+                           "tte": "UTF8",
+                           "ent": "mts",
+                           "auf": "audio/L16;rate=16000"
+                       },
+                       "data": { 
+                           "status": 2, 
+                           "text": btoa(unescape(encodeURIComponent("Assalomu alaykum, iFlytek tizimi muvaffaqiyatli ulandi."))) 
+                       }
+                   };
+                   socket.send(JSON.stringify(params));
+                };
+
+                socket.onmessage = (e) => {
+                    const res = JSON.parse(e.data);
+                    if (res.code !== 0) {
+                        console.error("iFlytek Full Error Object:", res);
+                        if (res.code === 11201) {
+                            alert("iFlytek Xatosi 11201: Xizmat faollashtirilmagan yoki bepul kvota tugagan. Iltimos, console.xfyun.cn orqali 'Text to Speech' xizmatini yoqing.");
+                        } else {
+                            alert("iFlytek Xatosi: " + res.message + " (Code: " + res.code + ")\nSID: " + res.sid);
+                        }
+                        socket.close();
+                        return;
+                    }
+                    if (res.data && res.data.audio) {
+                        const binary = atob(res.data.audio);
+                        const array = new Uint8Array(binary.length);
+                        for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+                        audioChunks.push(array);
+                    }
+                    if (res.data.status === 2) {
+                        console.log("Audio to'liq qabul qilindi.");
+                        playAudioChunks(audioChunks);
+                        socket.close();
+                    }
+                };
+
+                socket.onerror = (err) => console.error("WS Xatosi:", err);
+                socket.onclose = () => console.log("WS Yopildi.");
+
+            } catch (err) {
+                console.error(err);
+                alert("iFlytek Test Xatosi: " + err.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        let sttRecorder = null;
+        let sttChunks = [];
+        
         async function testSTT() {
             const btn = document.getElementById('btn-test-stt');
             if (sttRecorder && sttRecorder.state === "recording") {
@@ -354,6 +390,136 @@ if ($mapRow && !empty($mapRow['image_path'])) {
                 
             } catch(e) {
                 alert("Mikrofonga ruxsat olinmadi: " + e.message);
+            }
+        }
+
+        let iflytekSTTTestClient = null;
+        let iflytekSTTTestStream = null;
+        let iflytekSTTTestProcessor = null;
+        let iflytekAccumulatedText = "";
+
+        async function testIFlytekSTT() {
+            const btn = document.getElementById('btn-test-iflytek-stt');
+            if (iflytekSTTTestClient) {
+                iflytekSTTTestClient.stop();
+                if (iflytekSTTTestStream) {
+                    iflytekSTTTestStream.getTracks().forEach(t => t.stop());
+                }
+                if (iflytekSTTTestProcessor) {
+                    iflytekSTTTestProcessor.disconnect();
+                }
+                iflytekSTTTestClient = null;
+                btn.innerHTML = '<i class="fas fa-headphones"></i> iFLYTEK STT';
+                btn.style.background = '#00c6ff';
+                if (iflytekAccumulatedText) {
+                    alert("iFlytek STT Natijasi:\n" + iflytekAccumulatedText);
+                }
+                return;
+            }
+
+            try {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> iFLYTEK ESHITMOQDA...';
+                btn.style.background = '#ffc107';
+                iflytekAccumulatedText = "";
+                const { IFlytekSTT } = await import('../js/iflytek_stt.js?v=' + Date.now());
+                
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                iflytekSTTTestStream = stream;
+                
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // AudioWorklet ishlatamiz (Deprecation olib tashlash uchun)
+                await audioCtx.audioWorklet.addModule('../recorder-worklet.js');
+                const processor = new AudioWorkletNode(audioCtx, 'recorder-worklet');
+                iflytekSTTTestProcessor = processor;
+
+                const source = audioCtx.createMediaStreamSource(stream);
+
+                iflytekSTTTestClient = new IFlytekSTT(
+                    () => { console.log('iflytek stt connected'); },
+                    (text, isReplace) => {
+                         if (!text) return;
+                         if (isReplace) {
+                             iflytekAccumulatedText = text;
+                         } else {
+                             iflytekAccumulatedText += text;
+                         }
+                         const sttContent = document.getElementById('iflySTTContent');
+                         if (sttContent) {
+                             sttContent.innerText = iflytekAccumulatedText;
+                         }
+                         console.log("iFlytek STT Yozmoqda: ", iflytekAccumulatedText);
+                    },
+                    (err) => { 
+                         const sttContent = document.getElementById('iflySTTContent');
+                         if (sttContent) {
+                             sttContent.innerHTML = '<span style="color:#ff5252">Xatolik: ' + err + '</span>';
+                         }
+                         if (iflytekSTTTestStream) iflytekSTTTestStream.getTracks().forEach(t=>t.stop());
+                         iflytekSTTTestClient = null;
+                         btn.innerHTML = '<i class="fas fa-headphones"></i> iFLYTEK STT';
+                         btn.style.background = '#00c6ff';
+                    },
+                    () => {
+                         if (iflytekSTTTestStream) iflytekSTTTestStream.getTracks().forEach(t=>t.stop());
+                         iflytekSTTTestClient = null;
+                         btn.innerHTML = '<i class="fas fa-headphones"></i> iFLYTEK STT';
+                         btn.style.background = '#00c6ff';
+                    }
+                );
+                
+                const authUrl = new URL('../api/iflytek_auth.php?type=stt', window.location.href).href;
+                await iflytekSTTTestClient.connect('uz', authUrl);
+
+                processor.port.onmessage = (e) => {
+                    if (!iflytekSTTTestClient) return;
+                    const inputData = e.data;
+                    const ratio = audioCtx.sampleRate / 16000;
+                    const result = new Float32Array(Math.round(inputData.length / ratio));
+                    let offsetResult = 0;
+                    let offsetBuffer = 0;
+                    while (offsetResult < result.length) {
+                        let nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+                        let accum = 0, count = 0;
+                        for (let i = offsetBuffer; i < nextOffsetBuffer && i < inputData.length; i++) {
+                            accum += inputData[i];
+                            count++;
+                        }
+                        result[offsetResult] = accum / count;
+                        offsetResult++;
+                        offsetBuffer = nextOffsetBuffer;
+                    }
+                    iflytekSTTTestClient.sendAudio(result, false);
+                };
+
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+                
+                // Modal ochish
+                const sttModal = document.getElementById('iflySTTModal');
+                const sttContent = document.getElementById('iflySTTContent');
+                sttContent.innerHTML = '<span style="color:rgba(255,255,255,0.5)">Eshityapman...</span>';
+                sttModal.classList.add('active');
+                
+            } catch(e) {
+                const sttContent = document.getElementById('iflySTTContent');
+                if (sttContent) {
+                    sttContent.innerHTML = '<span style="color:#ff5252">Xatolik: ' + e.message + '</span>';
+                }
+                const sttModal = document.getElementById('iflySTTModal');
+                if (sttModal && !sttModal.classList.contains('active')) {
+                    sttModal.classList.add('active');
+                }
+                btn.innerHTML = '<i class="fas fa-headphones"></i> iFLYTEK STT';
+                btn.style.background = '#00c6ff';
+                iflytekSTTTestClient = null;
+            }
+        }
+
+        function closeIflySTT() {
+            document.getElementById('iflySTTModal').classList.remove('active');
+            if (iflytekSTTTestClient) {
+                testIFlytekSTT(); // Stop it if it's running
             }
         }
 
@@ -496,128 +662,24 @@ if ($mapRow && !empty($mapRow['image_path'])) {
             if (list) list.querySelectorAll('.point-btn').forEach(b => b.classList.remove('active'));
         }
 
-        // Gemini TTS Logic
-        let geminiVoices = [];
-        async function openGeminiTts() {
-            document.getElementById('geminiTtsModal').classList.add('active');
-            const select = document.getElementById('gemini-tts-voice');
-            const status = document.getElementById('gemini-status');
-            
-            if (geminiVoices.length === 0) {
-                status.innerText = "Ovozlar ro'yxati yuklanmoqda...";
-                // Gemini 2.0 Flash (Multimodal) - QAT'IY TALAB QILINGAN OVOZLAR
-                geminiVoices = [
-                    { name: 'Aoede', desc: '✨ Aoede (High Quality, Ayol) - DEFAULT', engine: 'gemini' },
-                    { name: 'Puck', desc: '✨ Puck (High Quality, Ayol)', engine: 'gemini' },
-                    { name: 'Charon', desc: '✨ Charon (High Quality, Erkak)', engine: 'gemini' },
-                    { name: 'Fenrir', desc: '✨ Fenrir (High Quality, Erkak)', engine: 'gemini' },
-                    { name: 'Kore', desc: '✨ Kore (Yumshoq, Ayol)', engine: 'gemini' },
-                    { name: 'Oura', desc: '✨ Oura (Lively, Ayol)', engine: 'gemini' },
-                    { name: 'Terra', desc: '✨ Terra (Calm, Ayol)', engine: 'gemini' },
-                    { name: 'Zephyr', desc: '✨ Zephyr (Fast, Erkak)', engine: 'gemini' },
-                    { name: 'Icarus', desc: '✨ Icarus (Sharp, Erkak)', engine: 'gemini' },
-                    { name: 'lola', desc: '👤 Lola (UzbekVoice - Ayol)', engine: 'uzbekvoice' },
-                    { name: 'dilshod', desc: '👤 Dilshod (UzbekVoice - Erkak)', engine: 'uzbekvoice' }
-                ];
-
-                geminiVoices.forEach(v => {
-                    const option = document.createElement('option');
-                    option.value = v.name;
-                    option.dataset.engine = v.engine;
-                    option.innerText = v.desc;
-                    if (v.name === 'Aoede') option.selected = true; // Aoede ni default qilish
-                    select.appendChild(option);
-                });
-                status.innerText = "Gemini 2.0 Flash suhandonlari tayyor.";
-            }
-        }
-
-        function closeGeminiTts() {
-            document.getElementById('geminiTtsModal').classList.remove('active');
-        }
-
-        async function playGeminiTts() {
-            const btn = document.getElementById('btn-gemini-play');
-            const text = document.getElementById('gemini-tts-text').value;
-            const select = document.getElementById('gemini-tts-voice');
-            const voiceName = select.value;
-            const langCode = select.options[select.selectedIndex]?.dataset.lang || 'en-US';
-            const status = document.getElementById('gemini-status');
-
-            if (!text.trim()) {
-                alert("Iltimos, matn kiriting.");
-                return;
-            }
-
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ovozlantirilmoqda...';
-            btn.disabled = true;
-            status.innerText = "So'rov yuborilmoqda...";
-
-            try {
-                const voiceOption = select.options[select.selectedIndex];
-                const engine = voiceOption.dataset.engine;
-                
-                let res;
-                if (engine === 'uzbekvoice') {
-                    // UzbekVoice
-                    res = await fetch('../api/tts.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: text, language: 'uz', voice: voiceName })
-                    });
-                } else {
-                    // Gemini AI (multimodal audio)
-                    res = await fetch('../api/gemini_voice.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: text, voice_name: voiceName })
-                    });
-                }
-
-                if (res.headers.get('Content-Type')?.includes('audio/mpeg')) {
-                    const blob = await res.blob();
-                    const audio = new Audio(URL.createObjectURL(blob));
-                    audio.play();
-                    status.innerText = "Muvaffaqiyatli! Audio ijro etilmoqda.";
-                } else {
-                    const data = await res.json();
-                    if (data.success && data.audioContent) {
-                        const mime = data.mimeType || 'audio/mpeg';
-                        const audio = new Audio("data:" + mime + ";base64," + data.audioContent);
-                        audio.play();
-                        status.innerText = "Muvaffaqiyatli! Gemini AI audio ijro etilmoqda.";
-                    } else if (data.chunks && data.chunks.length > 0) {
-                        const audio = new Audio("data:audio/mp3;base64," + data.chunks[0]);
-                        audio.play();
-                        status.innerText = "Muvaffaqiyatli! Audio (chunk) ijro etilmoqda.";
-                    } else {
-                        const detailStr = data.details ? JSON.stringify(data.details, null, 2) : "Noma'lum xato";
-                        console.error("TTS Xatosi:\n" + (data.error || "") + "\nDetails:\n" + detailStr);
-                        status.innerText = "Xatolik yuz berdi (Konsolga qarang).";
-                    }
-                }
-            } catch (e) {
-                console.error("Gemini TTS catch Xatosi:", e);
-                status.innerText = "Xatolik yuz berdi.";
-            } finally {
-                btn.innerHTML = originalHtml;
-                btn.disabled = false;
-            }
-        }
+        window.addEventListener('load', () => {
+            initAdminMapTest();
+        });
     </script>
 
-    <!-- Camera Test Modal -->
-    <div id="camTestModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeCamTest()">&times;</span>
-            <h2 style="margin-top: 0; color: var(--accent);">Kamera Diagnostikasi</h2>
-            <video id="test-video" autoplay muted playsinline></video>
-            <div id="camStatus" class="cam-status"></div>
-            <p style="font-size: 0.8rem; color: rgba(255,255,255,0.5); margin-top: 15px;">
-                * Bu yerda kiosk interfeysida ishlatiladigan kamera oqimi test qilinmoqda. Agar video ko'rinmasa, brauzer ruxsatlarini tekshiring.
             </p>
         </div>
     </div>
-</body>
-</html>
+
+    <!-- iFlytek STT Modal -->
+    <div id="iflySTTModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; text-align: center;">
+            <span class="close-btn" onclick="closeIflySTT()">&times;</span>
+            <h2 style="margin-top: 0; color: #00c6ff;"><i class="fas fa-headphones"></i> iFlytek STT Test</h2>
+            <div id="iflySTTContent" style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; min-height: 100px; margin: 20px 0; font-size: 1.2rem; line-height: 1.6; text-align: left; border: 1px solid rgba(0,198,255,0.2);">
+                Eshityapman...
+            </div>
+            <button onclick="closeIflySTT()" class="status-pill" style="cursor: pointer; background: #ff5252; color: white; border: none; padding: 10px 20px; font-weight: 600;">TO'XTATISH</button>
+        </div>
+    </div>
+<?php $page->renderFooter(); ?>

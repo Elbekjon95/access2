@@ -1,12 +1,12 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 session_start();
 
 header('Content-Type: application/json');
 
 
 try {
-    $pdo = getDbConnection();
+    $db = getDbConnection();
     
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['map_image'])) {
         if (!isset($_SESSION['admin_id'])) {
@@ -32,10 +32,13 @@ try {
         $targetPath = '../img/' . $newName;
         
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            $pdo->exec("CREATE TABLE IF NOT EXISTS maps (id INT PRIMARY KEY AUTO_INCREMENT, image_path VARCHAR(255), floor_name VARCHAR(100) DEFAULT 'default', updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
-            $pdo->exec("DELETE FROM maps");
-            $stmt = $pdo->prepare("INSERT INTO maps (image_path, floor_name) VALUES (?, ?)");
-            $stmt->execute(['img/' . $newName, 'default']);
+            $db->deleteMany('maps', []);
+            $db->insertOne('maps', [
+                'map_id' => 1,
+                'image_path' => 'img/' . $newName,
+                'floor_name' => 'default',
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
             
             echo json_encode(['success' => true, 'path' => 'img/' . $newName]);
         } else {
@@ -45,21 +48,18 @@ try {
     }
     
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        $pdo->exec("CREATE TABLE IF NOT EXISTS maps (id INT PRIMARY KEY AUTO_INCREMENT, image_path VARCHAR(255), floor_name VARCHAR(100) DEFAULT 'default', updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
-        $stmt = $pdo->query("SELECT image_path FROM maps LIMIT 1");
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        $imagePath = $row ? $row['image_path'] : 'img/airport_map.jpg';
-        // ../ ni olib tashlaymiz
-        $imagePath = str_replace('../', '', $imagePath);
-        
-        // Fayl mavjudligini tekshiramiz
-        $fullPath = dirname(__DIR__) . '/' . $imagePath;
-        if (!file_exists($fullPath)) {
-            $imagePath = 'img/airport_map.jpg';
+        $row = $db->findOne('maps', []);
+        $path = $row ? $row['image_path'] : 'img/airport_map_opt.webp';
+        if (!file_exists(__DIR__ . '/../' . $path)) {
+            if (file_exists(__DIR__ . '/../img/airport_map_opt.webp')) {
+                $path = 'img/airport_map_opt.webp';
+            } elseif (file_exists(__DIR__ . '/../img/airport_map_opt.jpg')) {
+                $path = 'img/airport_map_opt.jpg';
+            } else {
+                $path = 'img/airport_map.jpg';
+            }
         }
-        
-        echo json_encode(['path' => $imagePath]);
+        echo json_encode(['path' => $path]);
         exit;
     }
 } catch (Exception $e) {

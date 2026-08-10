@@ -1,31 +1,32 @@
+/**
+ * ACCSESS — 3D Earth & Flight Visualizer
+ * Ultra-Realistic Three.js 3D Globe with Local NASA Textures & Neon Flight Arcs
+ */
 
 let earthRenderer, earthScene, earthCamera, earth, orbitControls;
 window.earthInitialized = false;
 let currentRouteObjects = [];
 let borderGroup = null;
-let holoPointCloud = null;
 let fillGroup = null;
 let countryFeatures = null;
-let originFillMaterial = null;
-let destFillMaterial = null;
 let countryFillCanvas = null;
 let countryFillCtx = null;
 let countryFillTexture = null;
 let countryFillMesh = null;
+let cloudsMesh = null;
+
 const airportCoordCache = new Map();
 let airportJsonCache = null;
 let flightCurve = null;
 let flightPlane = null;
 let flightAnimActive = false;
-let flightAnimProgress = 0;
-let flightAnimSpeed = 0.09; // route completion fraction per second
+let flightAnimSpeed = 0.05; // route completion fraction per second (sokin va silliq parvoz)
 let flightAnimLastTs = 0;
-const FLIGHT_PLANE_SCALE = 1.9;
-const FLIGHT_MODEL_TARGET_SIZE = 0.062;
-const FLIGHT_MODEL_HEADING_OFFSET = Math.PI / 2;
-let flightModelTemplate = null;
-let flightModelLoadPromise = null;
+const FLIGHT_PLANE_SCALE = 2.2;
+const FLIGHT_MODEL_HEADING_OFFSET = 0;
 let flightHeadingFixQuat = null;
+let starsParticleSystem = null;
+
 function getApiBase() {
   if (typeof window !== "undefined" && window.API_BASE) {
     return window.API_BASE;
@@ -53,119 +54,178 @@ function getBaseCandidates() {
   return out;
 }
 
+/**
+ * Procedural Starfield (No external image dependency)
+ */
+function createStarfield() {
+  const starCount = 1500;
+  const starGeo = new THREE.BufferGeometry();
+  const positions = new Float32Array(starCount * 3);
+  const colors = new Float32Array(starCount * 3);
+
+  for (let i = 0; i < starCount; i++) {
+    const radius = 50 + Math.random() * 80;
+    const u = Math.random();
+    const v = Math.random();
+    const theta = 2 * Math.PI * u;
+    const phi = Math.acos(2 * v - 1);
+
+    positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    positions[i * 3 + 1] = radius * Math.cos(phi);
+    positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+    const tint = Math.random();
+    if (tint > 0.8) {
+      colors[i * 3] = 0.4; colors[i * 3 + 1] = 0.8; colors[i * 3 + 2] = 1.0;
+    } else if (tint > 0.6) {
+      colors[i * 3] = 1.0; colors[i * 3 + 1] = 0.9; colors[i * 3 + 2] = 0.7;
+    } else {
+      colors[i * 3] = 0.9; colors[i * 3 + 1] = 0.95; colors[i * 3 + 2] = 1.0;
+    }
+  }
+
+  starGeo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  starGeo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+
+  const starMat = new THREE.PointsMaterial({
+    size: 0.7,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.8,
+    sizeAttenuation: true,
+  });
+
+  return new THREE.Points(starGeo, starMat);
+}
+
+/**
+ * Initialize 3D Earth Canvas
+ */
 function initEarth(containerId) {
   if (window.earthInitialized) return;
 
   const container = document.getElementById(containerId);
   if (!container) {
-    console.error("Earth container not found:", containerId);
+    console.error("[EARTH] Container not found:", containerId);
     return;
   }
 
-  // Modal animatsiyasi hali tugamagan bo'lishi mumkin — fallback o'lcham
   const w = container.clientWidth || container.offsetWidth || 800;
   const h = container.clientHeight || container.offsetHeight || 600;
 
-  earthRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  earthScene = new THREE.Scene();
-  let aspect = w / h;
-  earthCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1500);
-  orbitControls = new THREE.OrbitControls(
-    earthCamera,
-    earthRenderer.domElement,
-  );
+  earthRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+  earthRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  earthRenderer.setSize(w, h);
 
-  let ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Bright ambient light
+  earthScene = new THREE.Scene();
+  const aspect = w / h;
+  earthCamera = new THREE.PerspectiveCamera(45, aspect, 0.1, 1000);
+  earthCamera.position.set(1.3, 0.5, 1.3);
+
+  orbitControls = new THREE.OrbitControls(earthCamera, earthRenderer.domElement);
+  orbitControls.enableDamping = true;
+  orbitControls.dampingFactor = 0.06;
+  orbitControls.rotateSpeed = 0.7;
+  orbitControls.zoomSpeed = 0.9;
+  orbitControls.minDistance = 0.65;
+  orbitControls.maxDistance = 3.5;
+  orbitControls.autoRotate = true;
+  orbitControls.autoRotateSpeed = 0.35;
+
+  // Balanced Professional Lighting
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
   earthScene.add(ambientLight);
 
-  let frontLight = new THREE.DirectionalLight(0xffffff, 0.5);
-  frontLight.position.set(5, 3, 5);
-  earthScene.add(frontLight);
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  sunLight.position.set(5, 3, 5);
+  earthScene.add(sunLight);
 
-  let backLight = new THREE.DirectionalLight(0xffffff, 0.3);
-  backLight.position.set(-5, -3, -5);
-  earthScene.add(backLight);
+  const fillLight = new THREE.DirectionalLight(0x00c6ff, 0.35);
+  fillLight.position.set(-5, -2, -4);
+  earthScene.add(fillLight);
 
-  earth = createPlanet({
-    surface: {
-      size: 0.5,
-      material: {
-        bumpScale: 0.05,
-        specular: new THREE.Color("grey"),
-        shininess: 10,
-      },
-      textures: {
-        map: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/earthmap1k.jpg",
-        bumpMap:
-          "https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/earthbump1k.jpg",
-        specularMap:
-          "https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/earthspec1k.jpg",
-      },
-    },
-    atmosphere: {
-      size: 0.003,
-      material: {
-        opacity: 0.8,
-      },
-      textures: {
-        map: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/earthcloudmap.jpg",
-        alphaMap:
-          "https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/earthcloudmaptrans.jpg",
-      },
-      glow: {
-        size: 0.02,
-        intensity: 0.7,
-        fade: 7,
-        color: 0x93cfef,
-      },
-    },
-  });
+  // Starfield
+  starsParticleSystem = createStarfield();
+  earthScene.add(starsParticleSystem);
 
-  let galaxyGeometry = new THREE.SphereGeometry(100, 32, 32);
-  let galaxyMaterial = new THREE.MeshBasicMaterial({ side: THREE.BackSide });
-  let galaxy = new THREE.Mesh(galaxyGeometry, galaxyMaterial);
-
-  let textureLoader = new THREE.TextureLoader();
-  textureLoader.crossOrigin = true;
-  textureLoader.load(
-    "https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/starfield.png",
-    function (texture) {
-      galaxyMaterial.map = texture;
-      earthScene.add(galaxy);
-    },
-  );
-
-  earthRenderer.setSize(w, h);
-  container.appendChild(earthRenderer.domElement);
-
-  earthCamera.position.set(1.5, 0.5, 1.5);
-  earthCamera.lookAt(earthScene.position);
-  orbitControls.enableDamping = true;
-  orbitControls.dampingFactor = 0.05;
-
-  earthScene.add(earthCamera);
+  // Earth Globe Group
+  earth = new THREE.Group();
   earthScene.add(earth);
 
-  earth.receiveShadow = true;
-  earth.castShadow = true;
-  earth.getObjectByName("surface").geometry.center();
+  // Surface Mesh with Local NASA Texture
+  const earthRadius = 0.5;
+  const earthGeo = new THREE.SphereGeometry(earthRadius, 64, 64);
 
-  softenSolidEarth();
-  addHoloPointCloud();
+  const textureLoader = new THREE.TextureLoader();
+  const apiBase = (window.location.pathname.includes("/admin/")) ? "../" : "";
+  const mapPath = `${apiBase}img/earth_map.jpg`;
+  const specPath = `${apiBase}img/earth_specular.jpg`;
+  const cloudsPath = `${apiBase}img/earth_clouds.png`;
+
+  const earthMat = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    specular: new THREE.Color(0x223344),
+    shininess: 15,
+  });
+
+  textureLoader.load(mapPath, (texture) => {
+    texture.minFilter = THREE.LinearFilter;
+    earthMat.map = texture;
+    earthMat.needsUpdate = true;
+    console.log("[EARTH] Local texture loaded successfully:", mapPath);
+  }, undefined, (err) => {
+    console.warn("[EARTH] Local texture load failed, trying fallback:", err);
+    // Fallback to unpkg CDN if needed
+    textureLoader.load("https://unpkg.com/three-globe@2.31.0/example/img/earth-blue-marble.jpg", (fallbackTex) => {
+      earthMat.map = fallbackTex;
+      earthMat.needsUpdate = true;
+    });
+  });
+
+  textureLoader.load(specPath, (specTex) => {
+    earthMat.specularMap = specTex;
+    earthMat.needsUpdate = true;
+  });
+
+  const surface = new THREE.Mesh(earthGeo, earthMat);
+  surface.name = "surface";
+  earth.add(surface);
+
+  // Dynamic Realistic Atmosphere / Cloud Layer
+  const cloudsGeo = new THREE.SphereGeometry(earthRadius * 1.006, 64, 64);
+  const cloudsMat = new THREE.MeshPhongMaterial({
+    transparent: true,
+    opacity: 0.38,
+    blending: THREE.NormalBlending,
+    depthWrite: false,
+  });
+
+  textureLoader.load(cloudsPath, (cloudsTex) => {
+    cloudsMat.map = cloudsTex;
+    cloudsMat.needsUpdate = true;
+  });
+
+  cloudsMesh = new THREE.Mesh(cloudsGeo, cloudsMat);
+  cloudsMesh.name = "clouds";
+  earth.add(cloudsMesh);
+
+  container.innerHTML = "";
+  container.appendChild(earthRenderer.domElement);
+
   loadCountryBorders();
+  loadAirplaneModel();
 
   window.earthInitialized = true;
   animateEarth();
 
-  // Modal to'liq ko'ringandan keyin o'lchamni qayta sozlash
   setTimeout(() => {
     if (typeof window.resizeEarth === "function") window.resizeEarth();
-  }, 300);
+  }, 250);
 }
 
 // Globus o'lchamini konteynerga moslashtirish
 window.resizeEarth = function () {
-  const container = document.getElementById("earth-container");
+  const container = document.getElementById("earth-container") || document.getElementById("earth-canvas");
   if (!container || !earthRenderer || !earthCamera) return;
   const w = container.clientWidth || container.offsetWidth || 800;
   const h = container.clientHeight || container.offsetHeight || 600;
@@ -175,194 +235,22 @@ window.resizeEarth = function () {
   earthCamera.updateProjectionMatrix();
 };
 
-let planetProto = {
-  sphere: function (size) {
-    return new THREE.SphereGeometry(size, 32, 32);
-  },
-  material: function (options) {
-    let material = new THREE.MeshPhongMaterial();
-    if (options) {
-      for (var property in options) {
-        material[property] = options[property];
-      }
-    }
-    return material;
-  },
-  glowMaterial: function (intensity, fade, color) {
-    let glowMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        c: { type: "f", value: intensity },
-        p: { type: "f", value: fade },
-        glowColor: { type: "c", value: new THREE.Color(color) },
-        viewVector: { type: "v3", value: earthCamera.position },
-      },
-      vertexShader: `
-                uniform vec3 viewVector;
-                uniform float c;
-                uniform float p;
-                varying float intensity;
-                void main() {
-                    vec3 vNormal = normalize( normalMatrix * normal );
-                    vec3 vNormel = normalize( normalMatrix * viewVector );
-                    intensity = pow( c - dot(vNormal, vNormel), p );
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-                }`,
-      fragmentShader: `
-                uniform vec3 glowColor;
-                varying float intensity;
-                void main() {
-                    vec3 glow = glowColor * intensity;
-                    gl_FragColor = vec4( glow, 1.0 );
-                }`,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-      transparent: true,
-    });
-    return glowMaterial;
-  },
-  texture: function (material, property, uri) {
-    let textureLoader = new THREE.TextureLoader();
-    textureLoader.crossOrigin = true;
-    textureLoader.load(uri, function (texture) {
-      material[property] = texture;
-      material.needsUpdate = true;
-    });
-  },
-};
-
-function createPlanet(options) {
-  let surfaceGeometry = planetProto.sphere(options.surface.size);
-  let surfaceMaterial = planetProto.material(options.surface.material);
-  let surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
-
-  let atmosphereGeometry = planetProto.sphere(
-    options.surface.size + options.atmosphere.size,
-  );
-  let atmosphereMaterialDefaults = {
-    side: THREE.DoubleSide,
-    transparent: true,
-  };
-  let atmosphereMaterialOptions = Object.assign(
-    atmosphereMaterialDefaults,
-    options.atmosphere.material,
-  );
-  let atmosphereMaterial = planetProto.material(atmosphereMaterialOptions);
-  let atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-
-  let atmosphericGlowGeometry = planetProto.sphere(
-    options.surface.size +
-      options.atmosphere.size +
-      options.atmosphere.glow.size,
-  );
-  let atmosphericGlowMaterial = planetProto.glowMaterial(
-    options.atmosphere.glow.intensity,
-    options.atmosphere.glow.fade,
-    options.atmosphere.glow.color,
-  );
-  let atmosphericGlow = new THREE.Mesh(
-    atmosphericGlowGeometry,
-    atmosphericGlowMaterial,
-  );
-
-  let planet = new THREE.Object3D();
-  surface.name = "surface";
-  atmosphere.name = "atmosphere";
-  atmosphericGlow.name = "atmosphericGlow";
-  planet.add(surface);
-  planet.add(atmosphere);
-  planet.add(atmosphericGlow);
-
-  for (let textureProperty in options.surface.textures) {
-    planetProto.texture(
-      surfaceMaterial,
-      textureProperty,
-      options.surface.textures[textureProperty],
-    );
-  }
-
-  for (let textureProperty in options.atmosphere.textures) {
-    planetProto.texture(
-      atmosphereMaterial,
-      textureProperty,
-      options.atmosphere.textures[textureProperty],
-    );
-  }
-
-  return planet;
-}
-
 function latLongToVector3(latitude, longitude, radius, height) {
-  let phi = (latitude * Math.PI) / 180;
-  let theta = ((longitude - 180) * Math.PI) / 180;
+  const phi = (latitude * Math.PI) / 180;
+  const theta = ((longitude - 180) * Math.PI) / 180;
+  const r = radius + (height || 0);
 
-  let x = -(radius + height) * Math.cos(phi) * Math.cos(theta);
-  let y = (radius + height) * Math.sin(phi);
-  let z = (radius + height) * Math.cos(phi) * Math.sin(theta);
+  const x = -r * Math.cos(phi) * Math.cos(theta);
+  const y = r * Math.sin(phi);
+  const z = r * Math.cos(phi) * Math.sin(theta);
 
   return new THREE.Vector3(x, y, z);
 }
 
-function softenSolidEarth() {
-  if (!earth) return;
-  const surface = earth.getObjectByName("surface");
-  const atmosphere = earth.getObjectByName("atmosphere");
-  if (surface && surface.material) {
-    surface.material.transparent = false;
-    surface.material.opacity = 1;
-  }
-  if (atmosphere && atmosphere.material) {
-    atmosphere.material.transparent = true;
-    atmosphere.material.opacity = 0.2;
-  }
-}
-
-function addHoloPointCloud() {
-  if (!earth || holoPointCloud) return;
-
-  const pointCount = 20000;
-  const positions = new Float32Array(pointCount * 3);
-  const radius = 0.5;
-
-  for (let i = 0; i < pointCount; i++) {
-    const u = Math.random();
-    const v = Math.random();
-    const theta = 2 * Math.PI * u;
-    const phi = Math.acos(2 * v - 1);
-
-    const x = Math.sin(phi) * Math.cos(theta);
-    const y = Math.cos(phi);
-    const z = Math.sin(phi) * Math.sin(theta);
-
-    const jitter = (Math.random() - 0.5) * 0.004;
-    const r = radius + jitter;
-
-    positions[i * 3] = x * r;
-    positions[i * 3 + 1] = y * r;
-    positions[i * 3 + 2] = z * r;
-  }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-
-  const mat = new THREE.PointsMaterial({
-    color: 0x00ffff,
-    size: 0.006,
-    sizeAttenuation: true,
-    transparent: true,
-    opacity: 0.75,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-
-  holoPointCloud = new THREE.Points(geo, mat);
-  earth.add(holoPointCloud);
-}
-
-
 async function loadCountryBorders() {
   if (!earth || borderGroup) return;
   if (typeof topojson === "undefined") {
-    console.warn("TopoJSON not available; country borders disabled.");
+    console.warn("[EARTH] TopoJSON not available; country borders disabled.");
     return;
   }
 
@@ -373,17 +261,15 @@ async function loadCountryBorders() {
   initCountryFillOverlay();
 
   try {
-    const res = await fetch(
-      "https://unpkg.com/world-atlas@2/countries-110m.json",
-    );
+    const res = await fetch("https://unpkg.com/world-atlas@2/countries-110m.json");
     if (!res.ok) throw new Error("Failed to fetch world atlas");
     const topo = await res.json();
     const geo = topojson.feature(topo, topo.objects.countries);
     countryFeatures = geo.features || [];
 
     const positions = [];
-    const radius = 0.505;
-    const height = 0.002;
+    const radius = 0.502;
+    const height = 0.001;
 
     const addRing = (ring) => {
       for (let i = 0; i < ring.length - 1; i++) {
@@ -394,21 +280,6 @@ async function loadCountryBorders() {
         positions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
       }
     };
-
-    originFillMaterial = new THREE.MeshBasicMaterial({
-      color: 0x33ff66,
-      transparent: true,
-      opacity: 0.5,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
-    destFillMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff3333,
-      transparent: true,
-      opacity: 0.5,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
 
     geo.features.forEach((feature) => {
       const geom = feature.geometry;
@@ -421,20 +292,17 @@ async function loadCountryBorders() {
     });
 
     const borderGeo = new THREE.BufferGeometry();
-    borderGeo.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(positions, 3),
-    );
+    borderGeo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
     const borderMat = new THREE.LineBasicMaterial({
-      color: 0x00ffff,
+      color: 0x00d2ff,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.32,
       blending: THREE.AdditiveBlending,
     });
     const borders = new THREE.LineSegments(borderGeo, borderMat);
     borderGroup.add(borders);
   } catch (err) {
-    console.warn("Country borders load failed:", err);
+    console.warn("[EARTH] Country borders load failed:", err);
   }
 }
 
@@ -447,17 +315,15 @@ function initCountryFillOverlay() {
   countryFillTexture = new THREE.CanvasTexture(countryFillCanvas);
   countryFillTexture.minFilter = THREE.LinearFilter;
   countryFillTexture.magFilter = THREE.LinearFilter;
-  countryFillTexture.wrapS = THREE.ClampToEdgeWrapping;
-  countryFillTexture.wrapT = THREE.ClampToEdgeWrapping;
 
   const fillMat = new THREE.MeshBasicMaterial({
     map: countryFillTexture,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.75,
     depthWrite: false,
     depthTest: false,
   });
-  const geo = new THREE.SphereGeometry(0.507, 64, 64);
+  const geo = new THREE.SphereGeometry(0.503, 48, 48);
   countryFillMesh = new THREE.Mesh(geo, fillMat);
   countryFillMesh.renderOrder = 5;
   earth.add(countryFillMesh);
@@ -465,167 +331,57 @@ function initCountryFillOverlay() {
 
 function clearCountryFills() {
   if (countryFillCtx && countryFillCanvas) {
-    countryFillCtx.clearRect(
-      0,
-      0,
-      countryFillCanvas.width,
-      countryFillCanvas.height,
-    );
+    countryFillCtx.clearRect(0, 0, countryFillCanvas.width, countryFillCanvas.height);
     if (countryFillTexture) countryFillTexture.needsUpdate = true;
-    return;
-  }
-  if (!fillGroup) return;
-  while (fillGroup.children.length > 0) {
-    const obj = fillGroup.children.pop();
-    if (obj.geometry) obj.geometry.dispose();
-    if (obj.material) obj.material.dispose();
   }
 }
 
-function addCountryFill(feature, material) {
-  if (!feature || !feature.geometry) return;
-  if (countryFillCtx && countryFillCanvas) {
-    drawCountryFillCanvas(feature, material);
-    return;
+function pointInRing(point, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const intersect =
+      yi > point[1] !== yj > point[1] &&
+      point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi + 0.0) + xi;
+    if (intersect) inside = !inside;
   }
+  return inside;
+}
 
-  const radius = 0.505;
-  const height = 0.004;
+function pointInPolygon(point, polygon) {
+  if (!polygon || polygon.length === 0) return false;
+  if (!pointInRing(point, polygon[0])) return false;
+  for (let i = 1; i < polygon.length; i++) {
+    if (pointInRing(point, polygon[i])) return false;
+  }
+  return true;
+}
 
-  const unwrapRing = (ring) => {
-    if (!ring || ring.length === 0) return [];
-    const out = [];
-    let prev = null;
-    for (let i = 0; i < ring.length; i++) {
-      let lon = ring[i][0];
-      const lat = ring[i][1];
-      if (prev !== null) {
-        while (lon - prev > 180) lon -= 360;
-        while (lon - prev < -180) lon += 360;
+function findCountryByPoint(lon, lat) {
+  if (!countryFeatures) return null;
+  const point = [lon, lat];
+  for (let i = 0; i < countryFeatures.length; i++) {
+    const geom = countryFeatures[i].geometry;
+    if (!geom) continue;
+    if (geom.type === "Polygon") {
+      if (pointInPolygon(point, geom.coordinates)) return countryFeatures[i];
+    } else if (geom.type === "MultiPolygon") {
+      for (let j = 0; j < geom.coordinates.length; j++) {
+        if (pointInPolygon(point, geom.coordinates[j])) return countryFeatures[i];
       }
-      out.push([lon, lat]);
-      prev = lon;
     }
-    return out;
-  };
-
-  const normalizeRings = (rings) =>
-    (rings || []).map((ring) => unwrapRing(ring));
-
-  const centroidFromRing = (ring) => {
-    if (!ring || ring.length === 0) return { lon: 0, lat: 0 };
-    let x = 0;
-    let y = 0;
-    let z = 0;
-    const deg2rad = Math.PI / 180;
-    ring.forEach((p) => {
-      const lon = p[0] * deg2rad;
-      const lat = p[1] * deg2rad;
-      const clat = Math.cos(lat);
-      x += clat * Math.cos(lon);
-      y += clat * Math.sin(lon);
-      z += Math.sin(lat);
-    });
-    const len = Math.sqrt(x * x + y * y + z * z) || 1;
-    x /= len;
-    y /= len;
-    z /= len;
-    const lat = Math.asin(z) / deg2rad;
-    const lon = Math.atan2(y, x) / deg2rad;
-    return { lon, lat };
-  };
-
-  const wrapToNear = (lon, centerLon) => {
-    let v = lon;
-    while (v - centerLon > 180) v -= 360;
-    while (v - centerLon < -180) v += 360;
-    return v;
-  };
-
-  const buildFillMesh = (rings) => {
-    if (!rings || rings.length === 0) return;
-    const normalized = normalizeRings(rings);
-    const centroid = centroidFromRing(normalized[0]);
-    const centerLon = centroid.lon;
-    const centerLat = centroid.lat;
-    const cosLat0 = Math.cos((centerLat * Math.PI) / 180);
-
-    const projectRing = (ring) =>
-      ring.map((p) => {
-        const lon = wrapToNear(p[0], centerLon);
-        const lat = p[1];
-        return {
-          v: new THREE.Vector2((lon - centerLon) * cosLat0, lat - centerLat),
-          lon,
-          lat,
-        };
-      });
-
-    const outerProj = projectRing(normalized[0]);
-    const holesProj = normalized.slice(1).map((ring) => projectRing(ring));
-    const outer = outerProj.map((p) => p.v);
-    const holes = holesProj.map((ring) => ring.map((p) => p.v));
-
-    const faces = THREE.ShapeUtils.triangulateShape(outer, holes);
-    if (!faces || faces.length === 0) return;
-
-    const verts = outer.concat(...holes);
-    const vertsLL = outerProj
-      .map((p) => ({ lon: p.lon, lat: p.lat }))
-      .concat(
-        ...holesProj.map((ring) =>
-          ring.map((p) => ({ lon: p.lon, lat: p.lat })),
-        ),
-      );
-    const pos = new Float32Array(faces.length * 9);
-    let idx = 0;
-    for (let i = 0; i < faces.length; i++) {
-      const a = vertsLL[faces[i][0]];
-      const b = vertsLL[faces[i][1]];
-      const c = vertsLL[faces[i][2]];
-
-      const va = latLongToVector3(a.lat, a.lon, radius, height);
-      const vb = latLongToVector3(b.lat, b.lon, radius, height);
-      const vc = latLongToVector3(c.lat, c.lon, radius, height);
-
-      pos[idx++] = va.x;
-      pos[idx++] = va.y;
-      pos[idx++] = va.z;
-      pos[idx++] = vb.x;
-      pos[idx++] = vb.y;
-      pos[idx++] = vb.z;
-      pos[idx++] = vc.x;
-      pos[idx++] = vc.y;
-      pos[idx++] = vc.z;
-    }
-
-    const geoFill = new THREE.BufferGeometry();
-    geoFill.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    geoFill.computeVertexNormals();
-    const mesh = new THREE.Mesh(geoFill, material);
-    fillGroup.add(mesh);
-  };
-
-  const geom = feature.geometry;
-  if (geom.type === "Polygon") {
-    buildFillMesh(geom.coordinates);
-  } else if (geom.type === "MultiPolygon") {
-    geom.coordinates.forEach((poly) => buildFillMesh(poly));
   }
+  return null;
 }
 
-function drawCountryFillCanvas(feature, material) {
-  if (!countryFillCtx || !countryFillCanvas || !feature || !feature.geometry)
-    return;
+function drawCountryFillCanvas(feature, colorHex, alpha = 0.5) {
+  if (!countryFillCtx || !countryFillCanvas || !feature || !feature.geometry) return;
   const ctx = countryFillCtx;
   const w = countryFillCanvas.width;
   const h = countryFillCanvas.height;
-
-  const color =
-    material && material.color ? material.color : new THREE.Color(1, 0, 0);
-  const alpha = material && typeof material.opacity === "number" ? material.opacity : 0.65;
-  const rgb = color.getStyle();
-  const rgba = rgb.replace("rgb(", "rgba(").replace(")", `, ${alpha})`);
 
   const lonToX = (lon) => ((lon + 180) / 360) * w;
   const latToY = (lat) => ((90 - lat) / 180) * h;
@@ -658,340 +414,254 @@ function drawCountryFillCanvas(feature, material) {
     ctx.fill();
   };
 
-  const drawPolygon = (rings) => {
-    if (!rings || rings.length === 0) return;
-    ctx.save();
-    ctx.fillStyle = rgba;
-    ctx.globalCompositeOperation = "source-over";
-    drawRing(rings[0]);
-
-    if (rings.length > 1) {
-      ctx.globalCompositeOperation = "destination-out";
-      for (let i = 1; i < rings.length; i++) {
-        drawRing(rings[i]);
-      }
-    }
-    ctx.restore();
-  };
+  ctx.save();
+  ctx.fillStyle = colorHex;
+  ctx.globalAlpha = alpha;
 
   const geom = feature.geometry;
   if (geom.type === "Polygon") {
-    drawPolygon(geom.coordinates);
+    geom.coordinates.forEach(drawRing);
   } else if (geom.type === "MultiPolygon") {
-    geom.coordinates.forEach((poly) => drawPolygon(poly));
+    geom.coordinates.forEach((poly) => poly.forEach(drawRing));
   }
+  ctx.restore();
 
   if (countryFillTexture) countryFillTexture.needsUpdate = true;
 }
 
-function pointInRing(point, ring) {
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
-    const intersect =
-      yi > point[1] !== yj > point[1] &&
-      point[0] <
-        ((xj - xi) * (point[1] - yi)) / (yj - yi + 0.0) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-function pointInPolygon(point, polygon) {
-  if (!polygon || polygon.length === 0) return false;
-  if (!pointInRing(point, polygon[0])) return false;
-  for (let i = 1; i < polygon.length; i++) {
-    if (pointInRing(point, polygon[i])) return false;
-  }
-  return true;
-}
-
-function findCountryByPoint(lon, lat) {
-  if (!countryFeatures) return null;
-  const point = [lon, lat];
-  for (let i = 0; i < countryFeatures.length; i++) {
-    const geom = countryFeatures[i].geometry;
-    if (!geom) continue;
-    if (geom.type === "Polygon") {
-      if (pointInPolygon(point, geom.coordinates)) return countryFeatures[i];
-    } else if (geom.type === "MultiPolygon") {
-      for (let j = 0; j < geom.coordinates.length; j++) {
-        if (pointInPolygon(point, geom.coordinates[j])) return countryFeatures[i];
-      }
-    }
-  }
-  return null;
-}
-
 function highlightCountriesByPoints(origin, dest) {
   if (!origin || !dest) return;
-  if (!countryFeatures || !originFillMaterial || !destFillMaterial) return;
   clearCountryFills();
 
   const originFeature = findCountryByPoint(origin.lon, origin.lat);
   const destFeature = findCountryByPoint(dest.lon, dest.lat);
 
-  if (originFeature) addCountryFill(originFeature, originFillMaterial);
+  if (originFeature) drawCountryFillCanvas(originFeature, "#00ff88", 0.45);
   if (destFeature && destFeature !== originFeature) {
-    addCountryFill(destFeature, destFillMaterial);
+    drawCountryFillCanvas(destFeature, "#ff3366", 0.45);
   }
 }
 
-function placeMarker(latitude, longitude, color, size) {
-  let position = latLongToVector3(latitude, longitude, 0.5, 0);
-  let markerGeometry = new THREE.SphereGeometry(size || 0.01);
-  let markerMaterial = new THREE.MeshLambertMaterial({ color: color });
-  let marker = new THREE.Mesh(markerGeometry, markerMaterial);
-  marker.position.copy(position);
-  earth.getObjectByName("surface").add(marker);
-  currentRouteObjects.push(marker);
-  return marker;
+/**
+ * Modern Pulsing 3D Pin / Marker for Airports (Ixcham va nafis)
+ */
+function placeMarker(latitude, longitude, colorHex, labelText, isOrigin = false) {
+  const group = new THREE.Group();
+  const basePos = latLongToVector3(latitude, longitude, 0.5, 0.002);
+  group.position.copy(basePos);
+
+  // Center beacon sphere (Ixcham)
+  const sphereGeo = new THREE.SphereGeometry(0.005, 16, 16);
+  const sphereMat = new THREE.MeshBasicMaterial({ color: colorHex });
+  const beacon = new THREE.Mesh(sphereGeo, sphereMat);
+  group.add(beacon);
+
+  // Outer glowing ring (Ixcham)
+  const ringGeo = new THREE.RingGeometry(0.007, 0.012, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: colorHex,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.lookAt(basePos.clone().multiplyScalar(2));
+  group.add(ring);
+
+  // Vertical light column (Ixcham)
+  const columnGeo = new THREE.CylinderGeometry(0.0006, 0.0015, 0.025, 8);
+  const columnMat = new THREE.MeshBasicMaterial({
+    color: colorHex,
+    transparent: true,
+    opacity: 0.65,
+    blending: THREE.AdditiveBlending,
+  });
+  const column = new THREE.Mesh(columnGeo, columnMat);
+  column.position.copy(basePos.clone().normalize().multiplyScalar(0.012));
+  column.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), basePos.clone().normalize());
+  group.add(column);
+
+  earth.add(group);
+  currentRouteObjects.push(group);
+  return group;
 }
 
+/**
+ * 3D Curved Great-Circle Flight Path
+ */
 function buildFlightCurve(lat1, lon1, lat2, lon2) {
-  let start = latLongToVector3(lat1, lon1, 0.5, 0.005);
-  let end = latLongToVector3(lat2, lon2, 0.5, 0.005);
+  const start = latLongToVector3(lat1, lon1, 0.5, 0.006);
+  const end = latLongToVector3(lat2, lon2, 0.5, 0.006);
 
-  let mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-  let distance = start.distanceTo(end);
-  let elevation = distance * 0.3; // Arc height
+  const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+  const distance = start.distanceTo(end);
+  const elevation = Math.min(0.32, Math.max(0.1, distance * 0.38));
   mid.normalize().multiplyScalar(0.5 + elevation);
 
   return new THREE.QuadraticBezierCurve3(start, mid, end);
 }
 
-function drawRoute(lat1, lon1, lat2, lon2, color) {
+function drawRoute(lat1, lon1, lat2, lon2) {
   const curve = buildFlightCurve(lat1, lon1, lat2, lon2);
-  let points = curve.getPoints(120);
-  let geometry = new THREE.BufferGeometry().setFromPoints(points);
-  let material = new THREE.LineBasicMaterial({
-    color: color || 0x00ffff,
-    linewidth: 4,
+
+  // 1. Core Glowing Neon Flight Tube (O'ta nozik, nafis va porloq 3D yoy)
+  const tubeGeo = new THREE.TubeGeometry(curve, 120, 0.00065, 8, false);
+  const tubeMat = new THREE.MeshBasicMaterial({
+    color: 0x00f2fe,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.95,
+    blending: THREE.AdditiveBlending,
+  });
+  const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+  earth.add(tubeMesh);
+  currentRouteObjects.push(tubeMesh);
+
+  // 2. Outer Soft Glowing Aura Tube (Nozik aura)
+  const glowGeo = new THREE.TubeGeometry(curve, 120, 0.0016, 8, false);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: 0x4facfe,
+    transparent: true,
+    opacity: 0.35,
+    blending: THREE.AdditiveBlending,
+  });
+  const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+  earth.add(glowMesh);
+  currentRouteObjects.push(glowMesh);
+
+  return { line: tubeMesh, curve };
+}
+
+/**
+ * Procedural Stylized Modern Jet Airplane Model
+ */
+function createFlightPlane() {
+  const group = new THREE.Group();
+
+  const bodyMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+  });
+  const wingMat = new THREE.MeshBasicMaterial({
+    color: 0x00d2ff,
+  });
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: 0x00ffff,
+    transparent: true,
+    opacity: 0.8,
   });
 
-  let line = new THREE.Line(geometry, material);
-  earth.add(line);
-  currentRouteObjects.push(line);
-  return { line, curve };
+  // Nose & Fuselage
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.0045, 0.016, 12), bodyMat);
+  nose.position.set(0, 0.014, 0);
+  group.add(nose);
+
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0038, 0.0042, 0.03, 12), bodyMat);
+  group.add(body);
+
+  // Main Swept Jet Wings
+  const mainWing = new THREE.Mesh(new THREE.BoxGeometry(0.036, 0.0016, 0.012), wingMat);
+  mainWing.position.set(0, 0.002, 0);
+  group.add(mainWing);
+
+  // Jet Engines
+  const engL = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.002, 0.009, 8), glowMat);
+  engL.position.set(-0.01, 0.001, -0.002);
+  group.add(engL);
+
+  const engR = new THREE.Mesh(new THREE.CylinderGeometry(0.0018, 0.002, 0.009, 8), glowMat);
+  engR.position.set(0.01, 0.001, -0.002);
+  group.add(engR);
+
+  // Tail Wings & Vertical Stabilizer
+  const tailWing = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.0012, 0.006), wingMat);
+  tailWing.position.set(0, -0.015, 0);
+  group.add(tailWing);
+
+  const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.0018, 0.009, 0.006), wingMat);
+  tailFin.position.set(0, -0.014, 0.0045);
+  group.add(tailFin);
+
+  group.scale.setScalar(2.6);
+  return group;
 }
 
-function cloneMaterial(material) {
-  if (!material) return material;
-  return typeof material.clone === "function" ? material.clone() : material;
-}
+let airplaneGltfTemplate = null;
+let airplaneLoadingPromise = null;
 
-function cloneGeometry(geometry) {
-  if (!geometry) return geometry;
-  return typeof geometry.clone === "function" ? geometry.clone() : geometry;
-}
+/**
+ * Loyihadagi original 3D samolyot modelini yuklash (models/airplane/scene.gltf)
+ */
+function loadAirplaneModel() {
+  if (airplaneGltfTemplate) return Promise.resolve(airplaneGltfTemplate);
+  if (airplaneLoadingPromise) return airplaneLoadingPromise;
 
-function makeObjectResourcesUnique(root) {
-  if (!root || typeof root.traverse !== "function") return;
-  root.traverse((obj) => {
-    if (!obj || !obj.isMesh) return;
-    if (obj.geometry) {
-      obj.geometry = cloneGeometry(obj.geometry);
-    }
-    if (Array.isArray(obj.material)) {
-      obj.material = obj.material.map((mat) => cloneMaterial(mat));
-    } else if (obj.material) {
-      obj.material = cloneMaterial(obj.material);
-    }
-  });
-}
-
-function disposeMaterial(material) {
-  if (!material) return;
-  if (Array.isArray(material)) {
-    material.forEach(disposeMaterial);
-    return;
-  }
-  if (typeof material.dispose === "function") {
-    material.dispose();
-  }
-}
-
-function disposeObject3D(root) {
-  if (!root || typeof root.traverse !== "function") return;
-  root.traverse((obj) => {
-    if (obj.geometry && typeof obj.geometry.dispose === "function") {
-      obj.geometry.dispose();
-    }
-    disposeMaterial(obj.material);
-  });
-}
-
-function alignModelForwardAxisY(root) {
-  const box = new THREE.Box3().setFromObject(root);
-  const size = new THREE.Vector3();
-  box.getSize(size);
-  if (size.x >= size.y && size.x >= size.z) {
-    root.rotation.z = -Math.PI / 2;
-  } else if (size.z >= size.x && size.z >= size.y) {
-    root.rotation.x = Math.PI / 2;
-  }
-}
-
-function normalizeModelSizeAndCenter(root, targetSize) {
-  if (!root) return;
-  root.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(root);
-  const size = new THREE.Vector3();
-  box.getSize(size);
-  const maxDim = Math.max(size.x, size.y, size.z);
-  if (!Number.isFinite(maxDim) || maxDim <= 0) return;
-  const scale = targetSize / maxDim;
-  root.scale.multiplyScalar(scale);
-  root.updateMatrixWorld(true);
-  const centeredBox = new THREE.Box3().setFromObject(root);
-  const center = new THREE.Vector3();
-  centeredBox.getCenter(center);
-  root.position.sub(center);
-}
-
-function prepareFlightModel(root) {
-  if (!root) return root;
-  alignModelForwardAxisY(root);
-  normalizeModelSizeAndCenter(root, FLIGHT_MODEL_TARGET_SIZE);
-  root.traverse((obj) => {
-    if (!obj || !obj.isMesh) return;
-    obj.castShadow = true;
-    obj.receiveShadow = true;
-  });
-  return root;
-}
-
-async function loadFlightModelTemplate() {
-  if (flightModelTemplate) return flightModelTemplate;
-  if (flightModelLoadPromise) return flightModelLoadPromise;
-
-  flightModelLoadPromise = (async () => {
-    if (!THREE || typeof THREE.GLTFLoader !== "function") {
-      throw new Error("GLTFLoader is not available");
+  airplaneLoadingPromise = new Promise((resolve) => {
+    if (typeof THREE.GLTFLoader === "undefined") {
+      console.warn("[EARTH] THREE.GLTFLoader mavjud emas, protsedural model ishlatiladi.");
+      resolve(null);
+      return;
     }
 
     const loader = new THREE.GLTFLoader();
-    const bases = getBaseCandidates();
-    let lastError = null;
+    const modelPaths = ["models/airplane/scene.gltf", "../models/airplane/scene.gltf", "/models/airplane/scene.gltf"];
 
-    for (const base of bases) {
-      const url = joinBasePath(base, "models/airplane/scene.gltf");
-      try {
-        const gltf = await new Promise((resolve, reject) => {
-          loader.load(url, resolve, undefined, reject);
-        });
-        const root = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
-        if (!root) {
-          throw new Error("GLTF loaded without scene root");
-        }
-        flightModelTemplate = prepareFlightModel(root);
-        return flightModelTemplate;
-      } catch (err) {
-        lastError = err;
+    const tryLoad = (idx) => {
+      if (idx >= modelPaths.length) {
+        console.warn("[EARTH] Airplane GLTF model yuklanmadi, protsedural modelga o'tiladi.");
+        resolve(null);
+        return;
       }
-    }
+      loader.load(
+        modelPaths[idx],
+        (gltf) => {
+          console.log("[EARTH] Original Airplane 3D GLTF modeli muvaffaqiyatli yuklandi:", modelPaths[idx]);
+          const rawModel = gltf.scene;
 
-    throw lastError || new Error("Unable to load airplane GLTF model");
-  })();
+          // Model o'lchamlarini tekshirish va masshtablash
+          const box = new THREE.Box3().setFromObject(rawModel);
+          const size = new THREE.Vector3();
+          box.getSize(size);
+          const maxDim = Math.max(size.x, size.y, size.z) || 1;
+          const scaleFactor = 0.048 / maxDim; // Globus yuzasiga mos o'lcham
+          rawModel.scale.setScalar(scaleFactor);
 
-  try {
-    return await flightModelLoadPromise;
-  } finally {
-    if (!flightModelTemplate) {
-      flightModelLoadPromise = null;
-    }
-  }
-}
+          // Model markazini (pivot) to'g'rilash
+          const center = new THREE.Vector3();
+          box.getCenter(center);
+          rawModel.position.sub(center.clone().multiplyScalar(scaleFactor));
 
-async function createFlightPlaneObject() {
-  try {
-    const template = await loadFlightModelTemplate();
-    const instance = template.clone(true);
-    makeObjectResourcesUnique(instance);
-    return instance;
-  } catch (err) {
-    console.warn("GLTF airplane load failed, using primitive fallback.", err);
-    return createFlightPlane(0xffffff);
-  }
-}
+          // Samolyot materiallarini tekshirish va metallik/yorqinlik berish
+          rawModel.traverse((child) => {
+            if (child.isMesh) {
+              if (child.material) {
+                child.material.metalness = 0.25;
+                child.material.roughness = 0.35;
+                if (child.material.emissive) {
+                  child.material.emissive = new THREE.Color(0x112233);
+                }
+              }
+            }
+          });
 
-function createFlightPlane(color = 0xffffff) {
-  const group = new THREE.Group();
-  const bodyMat = new THREE.MeshPhongMaterial({
-    color,
-    emissive: 0x1a3e55,
-    emissiveIntensity: 0.45,
-    shininess: 90,
+          // Orientatsiyani to'g'irlash: burni boradigan manzilga (qizil nuqtaga) to'ppa-to'g'ri qaratiladi (180 gradus teskari qilindi)
+          const wrapper = new THREE.Group();
+          rawModel.rotation.set(0, Math.PI / 2, 0);
+          wrapper.add(rawModel);
+
+          airplaneGltfTemplate = wrapper;
+          resolve(airplaneGltfTemplate);
+        },
+        undefined,
+        () => {
+          tryLoad(idx + 1);
+        }
+      );
+    };
+
+    tryLoad(0);
   });
-  const wingMat = new THREE.MeshPhongMaterial({
-    color: 0xdfe9f0,
-    emissive: 0x10384a,
-    emissiveIntensity: 0.35,
-    shininess: 65,
-  });
-  const canopyMat = new THREE.MeshPhongMaterial({
-    color: 0x7fd8ff,
-    emissive: 0x145f86,
-    emissiveIntensity: 0.4,
-    transparent: true,
-    opacity: 0.9,
-    shininess: 120,
-  });
 
-  // Nose points to +Y so orientation can follow curve tangent.
-  const noseGeo = new THREE.ConeGeometry(0.003, 0.012, 10);
-  const nose = new THREE.Mesh(noseGeo, bodyMat);
-  nose.position.set(0, 0.010, 0);
-  group.add(nose);
-
-  const bodyGeo = new THREE.CylinderGeometry(0.0024, 0.0028, 0.022, 12);
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.set(0, 0, 0);
-  group.add(body);
-
-  const tailBodyGeo = new THREE.ConeGeometry(0.0022, 0.008, 10);
-  const tailBody = new THREE.Mesh(tailBodyGeo, bodyMat);
-  tailBody.position.set(0, -0.015, 0);
-  tailBody.rotation.z = Math.PI;
-  group.add(tailBody);
-
-  const mainWingGeo = new THREE.BoxGeometry(0.020, 0.001, 0.006);
-  const mainWing = new THREE.Mesh(mainWingGeo, wingMat);
-  mainWing.position.set(0, 0.0015, 0);
-  group.add(mainWing);
-
-  const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.0008, 0.004), wingMat);
-  wingL.position.set(-0.007, 0.0009, 0.0015);
-  wingL.rotation.y = -0.32;
-  group.add(wingL);
-
-  const wingR = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.0008, 0.004), wingMat);
-  wingR.position.set(0.007, 0.0009, 0.0015);
-  wingR.rotation.y = 0.32;
-  group.add(wingR);
-
-  const tailWingGeo = new THREE.BoxGeometry(0.008, 0.0008, 0.003);
-  const tailWing = new THREE.Mesh(tailWingGeo, wingMat);
-  tailWing.position.set(0, -0.011, 0);
-  group.add(tailWing);
-
-  const tailFinGeo = new THREE.BoxGeometry(0.0012, 0.0052, 0.0022);
-  const tailFin = new THREE.Mesh(tailFinGeo, wingMat);
-  tailFin.position.set(0, -0.0105, 0);
-  group.add(tailFin);
-
-  const canopyGeo = new THREE.SphereGeometry(0.0024, 10, 10);
-  const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-  canopy.position.set(0, 0.005, 0.0012);
-  group.add(canopy);
-
-  group.scale.setScalar(FLIGHT_PLANE_SCALE);
-  return group;
+  return airplaneLoadingPromise;
 }
 
 async function startFlightAnimation(curve) {
@@ -1003,15 +673,22 @@ async function startFlightAnimation(curve) {
 
   if (flightPlane) {
     if (flightPlane.parent) flightPlane.parent.remove(flightPlane);
-    disposeObject3D(flightPlane);
     flightPlane = null;
   }
 
-  flightPlane = await createFlightPlaneObject();
+  // Original 3D GLTF modelini yuklaymiz
+  const gltfModel = await loadAirplaneModel();
+  if (gltfModel) {
+    flightPlane = gltfModel.clone(true);
+  } else {
+    flightPlane = createFlightPlane();
+  }
+
   const p0 = curve.getPoint(0);
   flightPlane.position.copy(p0);
   earth.add(flightPlane);
   currentRouteObjects.push(flightPlane);
+  console.log("[EARTH] Flight animation started successfully with 3D airplane model");
 }
 
 function updateFlightAnimation(deltaSec) {
@@ -1021,7 +698,7 @@ function updateFlightAnimation(deltaSec) {
   const t = flightAnimProgress;
 
   const p = flightCurve.getPoint(t);
-  const lift = p.clone().normalize().multiplyScalar(0.0012);
+  const lift = p.clone().normalize().multiplyScalar(0.005);
   flightPlane.position.copy(p).add(lift);
 
   const tangent = flightCurve.getTangent(t);
@@ -1031,13 +708,12 @@ function updateFlightAnimation(deltaSec) {
     const right = new THREE.Vector3().crossVectors(normal, forward).normalize();
     if (right.lengthSq() > 1e-9) {
       const up = new THREE.Vector3().crossVectors(forward, right).normalize();
-      // Model nose follows local +Z, so map basis Z to route tangent.
       const basis = new THREE.Matrix4().makeBasis(right, up, forward);
       const q = new THREE.Quaternion().setFromRotationMatrix(basis);
       if (!flightHeadingFixQuat) {
         flightHeadingFixQuat = new THREE.Quaternion().setFromAxisAngle(
           new THREE.Vector3(0, 1, 0),
-          FLIGHT_MODEL_HEADING_OFFSET,
+          FLIGHT_MODEL_HEADING_OFFSET
         );
       }
       q.multiply(flightHeadingFixQuat);
@@ -1046,46 +722,117 @@ function updateFlightAnimation(deltaSec) {
   }
 }
 
+/**
+ * Show Flight Route between Origin & Destination
+ */
 async function showFlightRoute(originCode, destCode) {
-  console.log("🌍 showFlightRoute called:", originCode, "->", destCode);
+  console.log("[EARTH] showFlightRoute:", originCode, "->", destCode);
   try {
-    const originKey = String(originCode || "").toUpperCase();
-    const destKey = String(destCode || "").toUpperCase();
+    let originKey = String(originCode || "TAS").toUpperCase();
+    let destKey = String(destCode || "").toUpperCase();
+
+    // Shahar nomlari xaritasi
+    const cityLookup = {
+      MOSCOW: "MOW", MOSKVA: "MOW", ISTANBUL: "IST", DUBAI: "DXB",
+      DELHI: "DEL", BEIJING: "PEK", SEOUL: "ICN", LONDON: "LHR",
+      PARIS: "CDG", ROME: "FCO", FRANKFURT: "FRA", NEWYORK: "JFK",
+      ALMATY: "ALA", ASTANA: "NQZ", BISHKEK: "FRU", DUSHANBE: "DYU",
+      BAKU: "GYD", TASHKENT: "TAS", SAMARKAND: "SKD", BUKHARA: "BHK",
+      URGENCH: "UGC", FERGANA: "FEG", NUKUS: "NCU", NAMANGAN: "NMA",
+      TERMEZ: "TMJ", JEDDAH: "JED", MEDINA: "MED", DOHA: "DOH"
+    };
+
+    if (cityLookup[destKey]) destKey = cityLookup[destKey];
+    if (cityLookup[originKey]) originKey = cityLookup[originKey];
+
     const airports = await getAirportCoords([originKey, destKey]);
 
-    const origin = airports[originKey];
-    const dest = airports[destKey];
+    let origin = airports[originKey] || { lat: 41.2579, lon: 69.2812, name: "Toshkent (TAS)" };
+    let dest = airports[destKey];
 
-    if (!origin || !dest) {
-      console.error("Airport coordinates not found:", originCode, destCode);
-      return;
+    // Nom bo'yicha qidiruv (Fallback)
+    if (!dest && airportJsonCache) {
+      const dLower = String(destCode).toLowerCase();
+      for (const [code, info] of Object.entries(airportJsonCache)) {
+        if (info.name && info.name.toLowerCase().includes(dLower)) {
+          dest = info;
+          destKey = code;
+          break;
+        }
+      }
+    }
+
+    if (!dest) {
+      // Default Moscow fallback if MOW / SVO
+      if (destKey.includes("MOS") || destKey.includes("MOW") || destKey.includes("SVO") || destKey.includes("VKO") || destKey.includes("DME")) {
+        dest = { lat: 55.7558, lon: 37.6173, name: "Moscow" };
+      } else {
+        console.error("[EARTH] Destination coordinates not found for:", destCode);
+        return;
+      }
     }
 
     clearRoute();
 
-    placeMarker(origin.lat, origin.lon, 0x00ff00, 0.012); // Green for origin
-    placeMarker(dest.lat, dest.lon, 0xff0000, 0.012); // Red for destination
+    // Origin: Tashkent (Emerald Green Pulse)
+    placeMarker(origin.lat, origin.lon, 0x00ff88, origin.name || "TAS", true);
+    // Destination: (Neon Pink/Red Pulse)
+    placeMarker(dest.lat, dest.lon, 0xff3366, dest.name || destKey, false);
 
-    const route = drawRoute(origin.lat, origin.lon, dest.lat, dest.lon, 0x00ffff);
+    // Glowing 3D Curved Route
+    const route = drawRoute(origin.lat, origin.lon, dest.lat, dest.lon);
     if (route && route.curve) {
       await startFlightAnimation(route.curve);
     }
     highlightCountriesByPoints(origin, dest);
 
-    let centerLat = (origin.lat + dest.lat) / 2;
-    let centerLon = (origin.lon + dest.lon) / 2;
-    let centerPos = latLongToVector3(centerLat, centerLon, 0.5, 1.5);
+    // Smooth Camera Focus on Route Midpoint (Faqat ikki nuqta oralig'iga yaqinlashadi)
+    const centerLat = (origin.lat + dest.lat) / 2;
+    const centerLon = (origin.lon + dest.lon) / 2;
+    const distance = latLongToVector3(origin.lat, origin.lon, 0.5).distanceTo(
+      latLongToVector3(dest.lat, dest.lon, 0.5)
+    );
+    // Masofani aynan ikki nuqta ekranda to'liq sig'adigan qilib hisoblaymiz
+    const cameraDist = Math.max(0.85, Math.min(1.65, 0.72 + distance * 1.05));
+    const targetCamPos = latLongToVector3(centerLat, centerLon, 0.5, cameraDist);
 
-    earthCamera.position.copy(centerPos);
-    earthCamera.lookAt(earthScene.position);
+    // Animate camera to target
+    animateCameraTo(targetCamPos);
   } catch (error) {
-    console.error("Error loading flight route:", error);
+    console.error("[EARTH] Error loading flight route:", error);
   }
+}
+
+function animateCameraTo(targetPos) {
+  if (!earthCamera || !orbitControls) return;
+  // Avto-aylanishni to'liq to'xtatamiz, shunda kamera aynan ikki nuqta oralig'ida qoladi
+  orbitControls.autoRotate = false;
+
+  const startPos = earthCamera.position.clone();
+  const startTime = performance.now();
+  const duration = 1200; // ms
+
+  function step(now) {
+    const elapsed = now - startTime;
+    const t = Math.min(1, elapsed / duration);
+    const ease = 0.5 - Math.cos(t * Math.PI) / 2;
+
+    earthCamera.position.lerpVectors(startPos, targetPos, ease);
+    earthCamera.lookAt(0, 0, 0);
+
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      // Reys ko'rsatilayotganda avto-aylanmasdan, aynan shu ikki nuqta oralig'ida turadi
+      if (orbitControls) orbitControls.autoRotate = false;
+    }
+  }
+  requestAnimationFrame(step);
 }
 
 async function getAirportCoords(codes) {
   const uniqueCodes = Array.from(
-    new Set((codes || []).map((c) => String(c || "").toUpperCase())),
+    new Set((codes || []).map((c) => String(c || "").toUpperCase()))
   ).filter((c) => c.length === 3);
 
   const missing = uniqueCodes.filter((c) => !airportCoordCache.has(c));
@@ -1104,12 +851,7 @@ async function getAirportCoords(codes) {
         const raw = await res.text();
         if (!raw) continue;
 
-        let data = null;
-        try {
-          data = JSON.parse(raw);
-        } catch (_) {
-          continue;
-        }
+        const data = JSON.parse(raw);
         if (!data || typeof data !== "object" || data.error) continue;
 
         Object.keys(data).forEach((code) => {
@@ -1130,12 +872,7 @@ async function getAirportCoords(codes) {
         });
         loadedFromApi = true;
         break;
-      } catch (_) {
-        // keep trying fallback bases
-      }
-    }
-    if (!loadedFromApi) {
-      console.warn("Airport coords API failed, fallback to JSON");
+      } catch (_) {}
     }
   }
 
@@ -1165,18 +902,11 @@ async function loadAirportJsonCache() {
     try {
       const res = await fetch(joinBasePath(base, "data/airport_coordinates.json"));
       if (!res.ok) continue;
-
-      const raw = await res.text();
-      if (!raw) continue;
-
-      const parsed = JSON.parse(raw);
+      const parsed = await res.json();
       if (!parsed || typeof parsed !== "object") continue;
-
       airportJsonCache = parsed;
       return;
-    } catch (_) {
-      // try next base path
-    }
+    } catch (_) {}
   }
   airportJsonCache = null;
 }
@@ -1187,39 +917,38 @@ function clearRoute() {
   flightAnimLastTs = 0;
   flightCurve = null;
   currentRouteObjects.forEach((obj) => {
-    if (obj.parent) {
-      obj.parent.remove(obj);
-    }
-    disposeObject3D(obj);
+    if (obj.parent) obj.parent.remove(obj);
   });
   currentRouteObjects = [];
   flightPlane = null;
+  clearCountryFills();
 }
 
 function animateEarth() {
   if (!window.earthInitialized) return;
 
   requestAnimationFrame(animateEarth);
-  if (window.pauseEarth) return; // CPU/GPU tejash uchun
+  if (window.pauseEarth) return;
 
   const now = performance.now();
-  if (!flightAnimLastTs) {
-    flightAnimLastTs = now;
-  }
+  if (!flightAnimLastTs) flightAnimLastTs = now;
   const dt = Math.min(0.05, (now - flightAnimLastTs) / 1000);
   flightAnimLastTs = now;
+
   updateFlightAnimation(dt);
 
+  // Subtle clouds rotation
+  if (cloudsMesh) {
+    cloudsMesh.rotation.y += dt * 0.02;
+  }
 
-  orbitControls.update();
-  earthRenderer.render(earthScene, earthCamera);
+  if (orbitControls) orbitControls.update();
+  if (earthRenderer && earthScene && earthCamera) {
+    earthRenderer.render(earthScene, earthCamera);
+  }
 }
 
-function resizeEarth() {
-  if (!window.earthInitialized) return;
-
-  const container = earthRenderer.domElement.parentElement;
-  earthCamera.aspect = container.clientWidth / container.clientHeight;
-  earthCamera.updateProjectionMatrix();
-  earthRenderer.setSize(container.clientWidth, container.clientHeight);
-}
+// Global scope bindings
+window.initEarth = initEarth;
+window.showFlightRoute = showFlightRoute;
+window.clearRoute = clearRoute;

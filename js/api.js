@@ -69,36 +69,60 @@ export function findLocalNavTarget(text) {
   const normalize = (t) => String(t || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   const msgNorm = normalize(msg);
 
-  // 1. Direct name match within msg
+  // 1. Stoyka (Counter range matching: 1-10, 11-20, 21-30, 31-40)
+  const counterRange = extractCounterRangeFromQuery(msg);
+  if (counterRange) {
+    const counterNode = findMapNodeForCounterRange(counterRange);
+    if (counterNode) return counterNode;
+    return { type: "counter_range", counterRange };
+  }
+
+  // 2. Direct name match within msg
   const byName = nodes.find(n => {
       const nodeName = normalize(n.name);
       return nodeName.length > 2 && (msgNorm.includes(nodeName) || nodeName.includes(msgNorm));
   });
   if (byName) return byName;
 
-  // 2. Type matches
-  if (/(hojatxona|tualet|wc|toilet|restroom)/.test(msg)) {
-      return nodes.find(n => n.type === 'toilet');
+  // 3. Type & Keyword matches
+  if (/(hojatxona|tualet|wc|toilet|restroom|bathroom|туалет|санузел)/.test(msg)) {
+      return nodes.find(n => n.type === 'toilet' || n.name.toLowerCase().includes('hojatxona') || n.name.toLowerCase().includes('toilet'));
   }
-  if (/(masjid|mosque|prayer|namoz)/.test(msg)) {
-      return nodes.find(n => n.type === 'mosque' || n.type === 'prayer_room');
+  if (/(masjid|mosque|prayer|namoz|namaz|мечеть|молельная)/.test(msg)) {
+      return nodes.find(n => n.type === 'mosque' || n.name.toLowerCase().includes('masjid') || n.name.toLowerCase().includes('namoz'));
   }
-  if (/(cip|vip|lounge|business|zal)/.test(msg)) {
-      return nodes.find(n => n.type === 'cip' || n.type === 'vip' || n.type === 'vip_lounge');
+  if (/(anor)/.test(msg)) {
+      return nodes.find(n => n.name.toLowerCase().includes('anor'));
   }
-  if (/(info|ma'lumot|reception|stoyka)/.test(msg)) {
-      return nodes.find(n => n.type === 'reception' || n.type === 'info' || n.type === 'counter');
+  if (/(anjir)/.test(msg)) {
+      return nodes.find(n => n.name.toLowerCase().includes('anjir'));
   }
-  if (/(kafe|cafe|food|ovqat|restoran)/.test(msg)) {
-      return nodes.find(n => n.type === 'cafe' || n.type === 'restaurant' || n.name.toLowerCase().includes('kafe'));
+  if (/(cip|vip|lounge|business|zal|вип|лаунж|бизнес)/.test(msg)) {
+      return nodes.find(n => n.type === 'cip' || n.type === 'vip' || n.name.toLowerCase().includes('cip') || n.name.toLowerCase().includes('vip'));
   }
-  if (/(duty|free|magazin|shop|dokon)/.test(msg)) {
+  if (/(kafe|cafe|food|ovqat|qahva|coffee|restoran|restaurant|кафе|ресторан)/.test(msg)) {
+      return nodes.find(n => n.type === 'cafe' || n.type === 'restaurant' || n.name.toLowerCase().includes('kafe') || n.name.toLowerCase().includes('restoran'));
+  }
+  if (/(duty|free|magazin|shop|do\'kon|dokon|дюти|магазин)/.test(msg)) {
        return nodes.find(n => n.name.toLowerCase().includes('duty') || n.name.toLowerCase().includes('free') || n.type === 'shop');
   }
-
-  const counterRange = extractCounterRangeFromQuery(msg);
-  if (counterRange) {
-    return { type: "counter_range", counterRange };
+  if (/(tibbiyot|medpunkt|doktor|vrach|shifokor|first\s*aid|medical|медпункт|аптека)/.test(msg)) {
+      return nodes.find(n => n.type === 'medical' || n.name.toLowerCase().includes('tibbiyot') || n.name.toLowerCase().includes('medpunkt'));
+  }
+  if (/(info|ma'lumot|malumot|reception|spravka|справка)/.test(msg)) {
+      return nodes.find(n => n.type === 'reception' || n.name.toLowerCase().includes('info') || n.name.toLowerCase().includes('axborot'));
+  }
+  if (/(bagaj|yuk|baggage|luggage|багаж)/.test(msg)) {
+      return nodes.find(n => n.type === 'baggage' || n.name.toLowerCase().includes('bagaj'));
+  }
+  if (/(darvoza|gate|выход)/.test(msg)) {
+      const m = msg.match(/(?:darvoza|gate|выход)\s*([a-z]?\d+)/i);
+      if (m && m[1]) {
+          const gCode = m[1].toUpperCase();
+          const gNode = nodes.find(n => n.type === 'gate' && n.name.toUpperCase().includes(gCode));
+          if (gNode) return gNode;
+      }
+      return nodes.find(n => n.type === 'gate');
   }
 
   return null;
@@ -489,31 +513,39 @@ export async function sendMessage(message) {
         hideQR();
       }
 
-      // Harita — faqat reys ma'lumotisiz (origin/destination yo'q) bo'lganda
-      // Reys bo'lsa → globe orqali stoyka tugmasi bosilganda harita ochiladi
-      if (data.location && !data.origin && !data.destination && window.airportNav) {
+      // Harita — agar lokatsiya aniqlangan bo'lsa yoki navigatsiya so'rovi bo'lsa
+      if (data.location && !data.origin && !data.destination) {
         showModal("map-modal");
-        if (typeof window.resetMapView === "function") window.resetMapView();
-        const navTarget = findLocalNavTarget(data.location);
-        if (navTarget && navTarget.pos_x && typeof window.airportNav.navigateTo === 'function') {
-          window.airportNav.navigateTo(navTarget.pos_x, navTarget.pos_y, data.location);
-        } else {
-          window.airportNav.findPath(data.location);
-        }
+        const loc = data.location;
+        console.log("[NAV] Triggering map navigation to:", loc);
+        setTimeout(() => {
+          if (window.airportNav) {
+            window.airportNav.resizeCanvasToContainer();
+            const navTarget = findLocalNavTarget(loc);
+            if (navTarget && navTarget.pos_x && typeof window.airportNav.navigateTo === 'function') {
+              window.airportNav.navigateTo(navTarget.pos_x, navTarget.pos_y, navTarget.name || loc);
+            } else {
+              window.airportNav.findPath(loc);
+            }
+          }
+        }, 200);
       } else if (isNavigationQuery(state.lastUserMessage)) {
         const target = findLocalNavTarget(state.lastUserMessage);
         if (target) {
-          if (target && typeof target === "object" && target.counterRange) {
-            routeToCheckinCounter(target.counterRange, "LOCAL");
-          } else if (window.airportNav) {
-            showModal("map-modal");
-            if (typeof window.resetMapView === "function") window.resetMapView();
-            if (target.pos_x && typeof window.airportNav.navigateTo === 'function') {
-              window.airportNav.navigateTo(target.pos_x, target.pos_y, target.name || target);
-            } else {
-              window.airportNav.findPath(target.name || target);
+          showModal("map-modal");
+          console.log("[NAV] Triggering local navigation from query:", target);
+          setTimeout(() => {
+            if (target && typeof target === "object" && target.counterRange) {
+              routeToCheckinCounter(target.counterRange, "LOCAL");
+            } else if (window.airportNav) {
+              window.airportNav.resizeCanvasToContainer();
+              if (target.pos_x && typeof window.airportNav.navigateTo === 'function') {
+                window.airportNav.navigateTo(target.pos_x, target.pos_y, target.name || target);
+              } else {
+                window.airportNav.findPath(target.name || target);
+              }
             }
-          }
+          }, 200);
         }
       }
     } else if (data.error) {

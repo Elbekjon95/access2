@@ -1,5 +1,6 @@
 <?php
-require 'api/config.php';
-$pdo = getDbConnection();
-$res = $pdo->query("SELECT ai_response FROM chats ORDER BY id DESC LIMIT 5")->fetchAll();
+require_once __DIR__ . '/config.php';
+$db = getDbConnection();
+$res = $db->find('chats', [], ['limit' => 5, 'sort' => ['_id' => -1]]);
 print_r($res);
+

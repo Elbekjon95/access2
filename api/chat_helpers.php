@@ -9,8 +9,8 @@ function detectLanguage($text) {
     $textLower = mb_strtolower($text, 'UTF-8');
 
     // 1. Script-based detection
-    if (preg_match('/[СћТ“Т›ТіК»КјвЂ™]|\w\'/u', $text)) return 'uz';
-    if (preg_match('/[Р°-СЏРђ-РЇС‘РЃ]/u', $text) && !preg_match('/[СћТ“Т›Ті]/u', $text)) return 'ru';
+    if (preg_match('/[ўғқҳЎҒҚҲʻʼ’]|\w\'/u', $text)) return 'uz';
+    if (preg_match('/[\p{Cyrillic}]/u', $text) && !preg_match('/[ўғқҳЎҒҚҲ]/u', $text)) return 'ru';
     
     // 2. Keyword-based detection
     $uzKeywords = ['qanday', 'nima', 'qachon', 'qayerda', 'qaerda', 'kim', 'kerak', 'bormi', 'salom', 'rahmat', 'reys', 'darvoza'];

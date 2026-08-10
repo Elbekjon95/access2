@@ -1,49 +1,65 @@
 <?php
 require_once 'config.php';
-session_start();
+secureSessionStart();
 
-if (!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['admin_id'])) {
     header("Location: admin/login.php");
     exit;
 }
 
 // Xarita ma'lumotlarini olish
-$stmtMap = $pdo->query("SELECT * FROM maps LIMIT 1");
-$mapInfo = $stmtMap->fetch(PDO::FETCH_ASSOC);
+$db = getDbConnection();
+$mapInfo = $db->findOne('maps', []);
 
 // Real rasm o'lchamini va yo'lini aniqlash (DB-dagi noto'g'ri ma'lumotlarni tuzatish uchun)
-$dbImagePath = $mapInfo ? $mapInfo['image_path'] : 'img/airport_map.jpg';
+$defaultMap = file_exists(__DIR__ . '/img/airport_map_opt.webp') ? 'img/airport_map_opt.webp' : (file_exists(__DIR__ . '/img/airport_map_opt.jpg') ? 'img/airport_map_opt.jpg' : 'img/airport_map.jpg');
+$dbImagePath = $mapInfo ? ($mapInfo['image_path'] ?? $defaultMap) : $defaultMap;
 $cleanImagePath = str_replace('../', '', $dbImagePath);
 $localImagePath = __DIR__ . '/' . $cleanImagePath;
 
 // Agar fayl mavjud bo'lmasa, default rasm ishlatamiz
 if (!file_exists($localImagePath)) {
-    $cleanImagePath = 'img/airport_map.jpg';
+    $cleanImagePath = $defaultMap;
     $localImagePath = __DIR__ . '/' . $cleanImagePath;
 }
 
 $imgSize = @getimagesize($localImagePath);
-$mapWidth = $imgSize ? (int)$imgSize[0] : ($mapInfo ? (int)$mapInfo['width'] : 16700);
-$mapHeight = $imgSize ? (int)$imgSize[1] : ($mapInfo ? (int)$mapInfo['height'] : 11813);
+$mapWidth = $imgSize ? (int)$imgSize[0] : ($mapInfo && isset($mapInfo['width']) ? (int)$mapInfo['width'] : 16700);
+$mapHeight = $imgSize ? (int)$imgSize[1] : ($mapInfo && isset($mapInfo['height']) ? (int)$mapInfo['height'] : 11813);
 $mapImagePath = $cleanImagePath;
 
 // Agar DB-da o'lcham yoki yo'l boshqacha bo'lsa, yangilab qo'yamiz (Self-healing)
-if ($mapInfo && ($mapInfo['width'] != $mapWidth || $mapInfo['height'] != $mapHeight || $mapInfo['image_path'] != $mapImagePath)) {
-    // MUHIM: Agar o'lcham 1000 dan katta o'lchamga o'tyotgan bo'lsa, mavjud nuqtalarni ham masshtablaymiz
-    if ((int)$mapInfo['width'] <= 1001 && $mapWidth > 2000) {
+if ($mapInfo && (
+    ($mapInfo['width'] ?? 0) != $mapWidth || 
+    ($mapInfo['height'] ?? 0) != $mapHeight || 
+    ($mapInfo['image_path'] ?? '') != $mapImagePath
+)) {
+    if (isset($mapInfo['width']) && (int)$mapInfo['width'] <= 1001 && $mapWidth > 2000) {
         $ratioX = $mapWidth / (int)$mapInfo['width'];
         $ratioY = $mapHeight / (int)$mapInfo['height'];
-        $pdo->exec("UPDATE map_points SET pos_x = pos_x * $ratioX, pos_y = pos_y * $ratioY");
-        // Note: map_barriers uses JSON format, scaling would require JSON parsing
+        $allPts = $db->find('map_points', []);
+        foreach ($allPts as $pt) {
+            if (isset($pt['pos_x']) && isset($pt['pos_y'])) {
+                $db->updateOne('map_points', ['_id' => $pt['_id']], [
+                    'pos_x' => $pt['pos_x'] * $ratioX,
+                    'pos_y' => $pt['pos_y'] * $ratioY
+                ]);
+            }
+        }
     }
 
-    $stmtUpd = $pdo->prepare("UPDATE maps SET width = ?, height = ?, image_path = ? WHERE id = ?");
-    $stmtUpd->execute([$mapWidth, $mapHeight, $mapImagePath, $mapInfo['id']]);
+    $mapId = $mapInfo['_id'] ?? ($mapInfo['id'] ?? null);
+    if ($mapId) {
+        $db->updateOne('maps', ['_id' => $mapId], [
+            'width' => $mapWidth,
+            'height' => $mapHeight,
+            'image_path' => $mapImagePath
+        ]);
+    }
 }
 
 // Nuqtalarni olish
-$stmtPoints = $pdo->query("SELECT * FROM map_points ORDER BY id DESC");
-$all_points = $stmtPoints->fetchAll(PDO::FETCH_ASSOC);
+$all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
 ?>
 <!DOCTYPE html>
 <html lang="uz">
@@ -52,8 +68,8 @@ $all_points = $stmtPoints->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
-    <link rel="stylesheet" href="style.css?v=1.2.4">
-    <link rel="preload" href="img/airport_map.jpg" as="image">
+    <link rel="stylesheet" href="style.css?v=1.2.5">
+    <link rel="preload" href="img/airport_map_opt.webp" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -356,6 +372,11 @@ $all_points = $stmtPoints->fetchAll(PDO::FETCH_ASSOC);
                     <div class="panel-header">Darvozalar</div>
                     <div class="panel-list" id="list-gates"></div>
                 </div>
+                <div class="map-floating-controls">
+                    <button class="map-control-btn" id="nav-btn-zoom-in" title="Kattalashtirish"><i class="fas fa-plus"></i></button>
+                    <button class="map-control-btn" id="nav-btn-zoom-out" title="Kichraytirish"><i class="fas fa-minus"></i></button>
+                    <button class="map-control-btn" id="nav-btn-center" title="Xaritani markazlash"><i class="fas fa-compress-arrows-alt"></i></button>
+                </div>
             </div>
         </div>
     </div>
@@ -449,17 +470,9 @@ $all_points = $stmtPoints->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-    <script src="earth.js?v=1.2.4"></script>
-    <script>
-        window.NAV_LINE_WIDTH = 12;
-        window.NAV_LINE_GLOW = 1;
-        window.NAV_LINE_DASH = false;
-        window.NAV_LINE_COLOR = "#ff3b30";
-        window.NAV_CAMERA_FOLLOW = true;
-        window.NAV_CAMERA_ZOOM = 1.7;
-    </script>
-    <script src="navigation.js?v=1.2.4"></script>
-    <script type="module" src="./js/main.js?v=1.2.4"></script>
+    <script src="earth.js?v=1.3.4"></script>
+    <script src="navigation.js?v=1.3.4"></script>
+    <script type="module" src="./js/main.js?v=1.3.4"></script>
 </body>
 
 </html>

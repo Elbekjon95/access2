@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 session_start();
 
 if (!isset($_SESSION['admin_auth'])) {
@@ -14,13 +14,18 @@ if ($action === 'add' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = $_POST['full_name'];
     $username = $_POST['username'];
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    $role = $_POST['role'];
+    $role = $_POST['role'] ?? 'user';
 
     try {
-        $stmt = $db->prepare("INSERT INTO users (full_name, username, password, role) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$full_name, $username, $password, $role]);
+        $db->insertOne('users', [
+            'full_name' => $full_name,
+            'username' => $username,
+            'password' => $password,
+            'role' => $role,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
         header("Location: ../admin_dashboard.php?msg=added");
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
         die("Xatolik: " . $e->getMessage());
     }
 }

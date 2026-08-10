@@ -1,122 +1,244 @@
+/**
+ * ACCSESS — Interactive Airport Navigation Engine
+ * Ultra-Smooth Canvas 2D Navigation with Drag/Pan, Pinch-Zoom, Glowing Path & Pulse Markers
+ */
+
 class AirportNavigation {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
+    if (!this.canvas) return;
     this.ctx = this.canvas.getContext("2d");
+
     this.worldWidth = 0;
     this.worldHeight = 0;
-    this.pxScale = 1;
+    this.backgroundImage = new Image();
+
+    // Transform State (Pan & Zoom)
+    this.scale = 1;
+    this.minScale = 0.1;
+    this.maxScale = 6.0;
+    this.panX = 0;
+    this.panY = 0;
+    this.fitScale = 1;
+
+    // User Interaction (Mouse & Touch)
+    this.isDragging = false;
+    this.dragStartX = 0;
+    this.dragStartY = 0;
+    this.userHasPanned = false;
+    this.touchStartDist = 0;
+
+    // Navigation & Pathfinding
     this.nodes = [];
     this.path = [];
+    this.smoothedPath = [];
     this.barriers = [];
     this.collisionGrid = null;
-    this.gridSize = 30; // Grid o'lchami oshirildi (tezlik uchun)
-    this.backgroundImage = new Image();
+    this.gridSize = 30;
     this.kioskPos = { x: 500, y: 800 };
-    this.offset = 0;
-    this.pathRevealProgress = 0; 
+    this.targetNode = null;
+
+    // Animation Properties
+    this.pathRevealProgress = 0;
     this.isAnimatingPath = false;
-    this.pathDrawDuration = 3.0; // Sekinlashtirildi (User talabi: 3.0s)
+    this.pathDrawDuration = 2.5; // seconds
     this.cameraProgress = 0;
     this.totalPathLength = 0;
     this.pathSegments = [];
+    this.pulsePhase = 0;
+
     this.lastFrameTime = performance.now();
-    this.lastRenderTime = 0;
-    this.activeFps = 60; // Yanada silliq animatsiya uchun
-    this.idleFps = 10;
     this.needsRender = true;
-    this.lowFxMode = false;
     this.mapReady = false;
     this.pendingTarget = null;
+
     this.resizeCanvasToContainer();
-    window.addEventListener("resize", () => this.resizeCanvasToContainer());
+    this.setupEventListeners();
+    window.addEventListener("resize", () => {
+      this.resizeCanvasToContainer();
+      this.centerMap();
+    });
+
     this.animate();
   }
 
   resizeCanvasToContainer() {
     const container = this.canvas ? this.canvas.parentElement : null;
     if (!container) return;
-    
-    const nextW = Math.max(800, container.clientWidth || 1280);
-    const nextH = Math.max(600, container.clientHeight || 720);
-    
+
+    const nextW = container.clientWidth || 1280;
+    const nextH = container.clientHeight || 720;
+
     if (this.canvas.width !== nextW || this.canvas.height !== nextH) {
-      console.log("[NAV] Resizing canvas to:", nextW, "x", nextH);
       this.canvas.width = nextW;
       this.canvas.height = nextH;
+      this.calculateFitScale();
       this.needsRender = true;
     }
   }
 
-  animate() {
-    const now = performance.now();
-    const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
-    this.lastFrameTime = now;
+  calculateFitScale() {
+    if (!this.worldWidth || !this.worldHeight || !this.canvas.width || !this.canvas.height) return;
+    const padding = 20;
+    const scaleX = (this.canvas.width - padding * 2) / this.worldWidth;
+    const scaleY = (this.canvas.height - padding * 2) / this.worldHeight;
+    this.fitScale = Math.min(scaleX, scaleY);
+    this.minScale = this.fitScale * 0.7;
+    this.maxScale = this.fitScale * 7.0;
+  }
 
-    if (this.isAnimatingPath) {
-      this.offset += dt * 15;
-      if (this.offset > 25) this.offset = 0;
-      
-      const step = dt / this.pathDrawDuration;
-      this.pathRevealProgress = Math.min(1, this.pathRevealProgress + step);
-      this.cameraProgress = Math.min(1, this.cameraProgress + step);
+  centerMap() {
+    if (!this.worldWidth || !this.worldHeight) return;
+    this.calculateFitScale();
+    this.scale = this.fitScale;
+    this.panX = (this.canvas.width - this.worldWidth * this.scale) / 2;
+    this.panY = (this.canvas.height - this.worldHeight * this.scale) / 2;
+    this.userHasPanned = false;
+    this.needsRender = true;
+  }
 
-      if (this.pathRevealProgress >= 1 && this.cameraProgress >= 1) {
-        this.isAnimatingPath = false;
+  setupEventListeners() {
+    if (!this.canvas) return;
+
+    // Mouse Down
+    this.canvas.addEventListener("mousedown", (e) => {
+      this.isDragging = true;
+      this.dragStartX = e.clientX - this.panX;
+      this.dragStartY = e.clientY - this.panY;
+      this.userHasPanned = true;
+      this.canvas.style.cursor = "grabbing";
+    });
+
+    // Mouse Move
+    window.addEventListener("mousemove", (e) => {
+      if (!this.isDragging) return;
+      this.panX = e.clientX - this.dragStartX;
+      this.panY = e.clientY - this.dragStartY;
+      this.needsRender = true;
+    });
+
+    // Mouse Up
+    window.addEventListener("mouseup", () => {
+      if (this.isDragging) {
+        this.isDragging = false;
+        if (this.canvas) this.canvas.style.cursor = "grab";
       }
-    }
+    });
 
-    const mustRender = this.isAnimatingPath || this.needsRender;
-    if (mustRender) {
-      const targetFps = this.isAnimatingPath ? this.activeFps : this.idleFps;
-      const frameInterval = 1000 / targetFps;
-      if (now - this.lastRenderTime >= frameInterval) {
-        this.render();
-        this.lastRenderTime = now;
-        if (!this.isAnimatingPath) this.needsRender = false;
+    // Wheel Zoom
+    this.canvas.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      this.userHasPanned = true;
+
+      const rect = this.canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
+      const newScale = Math.min(this.maxScale, Math.max(this.minScale, this.scale * zoomFactor));
+
+      // Zoom towards mouse position
+      this.panX = mouseX - (mouseX - this.panX) * (newScale / this.scale);
+      this.panY = mouseY - (mouseY - this.panY) * (newScale / this.scale);
+      this.scale = newScale;
+      this.needsRender = true;
+    }, { passive: false });
+
+    // Touch Events (Mobile/Kiosk Touch)
+    this.canvas.addEventListener("touchstart", (e) => {
+      this.userHasPanned = true;
+      if (e.touches.length === 1) {
+        this.isDragging = true;
+        this.dragStartX = e.touches[0].clientX - this.panX;
+        this.dragStartY = e.touches[0].clientY - this.panY;
+      } else if (e.touches.length === 2) {
+        this.isDragging = false;
+        this.touchStartDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
       }
-    }
-    requestAnimationFrame(() => this.animate());
+    }, { passive: true });
+
+    this.canvas.addEventListener("touchmove", (e) => {
+      if (e.touches.length === 1 && this.isDragging) {
+        this.panX = e.touches[0].clientX - this.dragStartX;
+        this.panY = e.touches[0].clientY - this.dragStartY;
+        this.needsRender = true;
+      } else if (e.touches.length === 2 && this.touchStartDist > 0) {
+        const currentDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = currentDist / this.touchStartDist;
+        const newScale = Math.min(this.maxScale, Math.max(this.minScale, this.scale * factor));
+
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+        this.panX = midX - (midX - this.panX) * (newScale / this.scale);
+        this.panY = midY - (midY - this.panY) * (newScale / this.scale);
+        this.scale = newScale;
+        this.touchStartDist = currentDist;
+        this.needsRender = true;
+      }
+    }, { passive: true });
+
+    this.canvas.addEventListener("touchend", () => {
+      this.isDragging = false;
+      this.touchStartDist = 0;
+    }, { passive: true });
   }
 
   async loadMap(imagePath) {
-    // 1. Xarita rasmini yuklash
+    console.log("[NAV] Loading map from:", imagePath);
     await new Promise((resolve, reject) => {
       this.backgroundImage.onload = () => {
         this.worldWidth = this.backgroundImage.naturalWidth || this.backgroundImage.width;
         this.worldHeight = this.backgroundImage.naturalHeight || this.backgroundImage.height;
-        console.log('[NAV] Map loaded:', this.worldWidth, 'x', this.worldHeight);
+        console.log("[NAV] Map loaded size:", this.worldWidth, "x", this.worldHeight);
         this.resizeCanvasToContainer();
-        this.needsRender = true;
+        this.centerMap();
         resolve();
       };
       this.backgroundImage.onerror = (err) => {
-        console.error('[NAV] Failed to load map image:', imagePath, err);
-        reject(err);
+        console.warn("[NAV] Map load failed for:", imagePath, "Trying fallback...");
+        if (!imagePath.includes("airport_map.jpg")) {
+          this.backgroundImage.src = "img/airport_map.jpg";
+        } else {
+          reject(err);
+        }
       };
       this.backgroundImage.src = imagePath;
     });
 
-    // 2. Baryerlarni yuklash (rasm yuklanganidan KEYIN — worldWidth tayyor)
+    // Load Barriers
     try {
-      const apiBase = (window.location.pathname.includes("/admin/")) ? "../" : "";
+      const apiBase = window.location.pathname.includes("/admin/") ? "../" : "";
       const res = await fetch(`${apiBase}api/barriers.php`);
       this.barriers = await res.json();
-      console.log('[NAV] Barriers loaded:', this.barriers.length);
+      console.log("[NAV] Barriers loaded:", this.barriers.length);
     } catch (e) {
-      console.error('[NAV] Barriers fetch error:', e);
       this.barriers = [];
     }
 
-    // 3. Collision grid — rasm va baryerlar tayyor bo'lgandan keyin
     this.updateCollisionGrid();
-
-    // 4. Navigatsiya tayyor
     this.mapReady = true;
+
     if (this.pendingTarget) {
-      const targetName = this.pendingTarget;
+      const target = this.pendingTarget;
       this.pendingTarget = null;
-      this.findPath(targetName);
+      this.findPath(target);
     }
+  }
+
+  setNodes(nodes) {
+    this.nodes = Array.isArray(nodes) ? nodes : [];
+    const kiosk = this.nodes.find((n) => n.type === "kiosk_start" || n.name === "Kiosk");
+    if (kiosk) {
+      this.kioskPos = { x: Number(kiosk.pos_x), y: Number(kiosk.pos_y) };
+    }
+    this.needsRender = true;
   }
 
   updateCollisionGrid() {
@@ -125,8 +247,7 @@ class AirportNavigation {
     const rows = Math.ceil(this.worldHeight / this.gridSize) + 1;
     this.collisionGrid = new Uint8Array(cols * rows);
 
-    const MARGIN = 1; // Baryerlar atrofida 1 cell (~30px) chegarasi
-
+    const MARGIN = 1;
     this.barriers.forEach((b) => {
       const d = b.barrier_data;
       if (!d) return;
@@ -136,7 +257,6 @@ class AirportNavigation {
       const bh = Number(d.h || d.height) || 0;
       if (bw <= 0 || bh <= 0) return;
 
-      // Math.ceil ishlatamiz — o'ng/pastki chegaralar ham to'liq bloklansin
       const x1 = Math.max(0, Math.floor(bx / this.gridSize) - MARGIN);
       const x2 = Math.min(cols - 1, Math.ceil((bx + bw) / this.gridSize) + MARGIN);
       const y1 = Math.max(0, Math.floor(by / this.gridSize) - MARGIN);
@@ -148,8 +268,6 @@ class AirportNavigation {
         }
       }
     });
-
-    console.log('[NAV] Collision grid updated. Barriers:', this.barriers.length);
   }
 
   isGridBlocked(gx, gy) {
@@ -160,121 +278,40 @@ class AirportNavigation {
     return this.collisionGrid[gy * cols + gx] === 1;
   }
 
-  findNearestWalkable(gx, gy) {
-      if (!this.isGridBlocked(gx, gy)) return { x: gx, y: gy };
-      const maxRadius = 10;
-      for (let r = 1; r <= maxRadius; r++) {
-          for (let dx = -r; dx <= r; dx++) {
-              for (let dy = -r; dy <= r; dy++) {
-                  if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-                  const nx = gx + dx;
-                  const ny = gy + dy;
-                  if (!this.isGridBlocked(nx, ny)) return { x: nx, y: ny };
-              }
+  findNearestWalkable(x, y) {
+    let gx = Math.round(x / this.gridSize);
+    let gy = Math.round(y / this.gridSize);
+    if (!this.isGridBlocked(gx, gy)) return { x: gx, y: gy };
+
+    for (let r = 1; r < 25; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          if (Math.abs(dx) === r || Math.abs(dy) === r) {
+            if (!this.isGridBlocked(gx + dx, gy + dy)) {
+              return { x: gx + dx, y: gy + dy };
+            }
           }
+        }
       }
-      return { x: gx, y: gy };
-  }
-
-  setNodes(nodes) {
-    this.nodes = (nodes || []).map(n => ({...n, pos_x: Number(n.pos_x), pos_y: Number(n.pos_y)}));
-    const kiosk = this.nodes.find(n => n.type === 'kiosk_start' || n.name === 'kiosk_start');
-    if (kiosk) this.kioskPos = { x: kiosk.pos_x, y: kiosk.pos_y };
-    this.needsRender = true;
-  }
-
-  resetZoom() {
-    this.isAnimatingPath = false;
-    this.path = [];
-    this.pathRevealProgress = 0; 
-    this.cameraProgress = 0;
-    this.needsRender = true;
-  }
-
-  navigateTo(targetX, targetY, targetName) {
-    const tx = Number(targetX);
-    const ty = Number(targetY);
-    if (isNaN(tx) || isNaN(ty) || (tx === 0 && ty === 0)) return this.findPath(targetName);
-
-    if (!this.mapReady || !this.worldWidth) {
-      this.pendingTarget = targetName;
-      return;
     }
-
-    this.resetZoom();
-    const start = { x: this.kioskPos.x, y: this.kioskPos.y };
-    const end = { x: tx, y: ty };
-
-    let gridPath = this.aStar(this.toGrid(start), this.toGrid(end));
-    if (gridPath && gridPath.length > 1) {
-      this.path = gridPath.map(p => this.fromGrid(p));
-    } else {
-      this.path = [start, end];
-    }
-
-    this.pathRevealProgress = 0.01;
-    this.cameraProgress = 0.01;
-    this.isAnimatingPath = true;
-    this.needsRender = true;
-    this.computePathMetrics();
-    
-    const modal = document.getElementById("map-modal");
-    if (modal) modal.classList.remove("hide");
+    return { x: gx, y: gy };
   }
 
-  findPath(targetName) {
-    if (!this.mapReady) {
-      this.pendingTarget = targetName;
-      return null;
-    }
-    if (!this.nodes || this.nodes.length === 0) return null;
+  aStar(startPt, endPt) {
+    const start = this.findNearestWalkable(startPt.x, startPt.y);
+    const end = this.findNearestWalkable(endPt.x, endPt.y);
 
-    const normalize = (text) =>
-      String(text || "").toLowerCase().replace(/[_-]+/g, " ").replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
-
-    const normalizedSearch = normalize(targetName);
-    const directMatches = this.nodes.filter((n) => {
-      const nodeName = normalize(n.name);
-      return nodeName.includes(normalizedSearch) || normalizedSearch.includes(nodeName);
-    });
-
-    let target = directMatches[0] || null;
-    if (!target) return null;
-
-    const start = { x: this.kioskPos.x, y: this.kioskPos.y };
-    const end = { x: target.pos_x, y: target.pos_y };
-    
-    const gridPath = this.aStar(this.toGrid(start), this.toGrid(end));
-    if (gridPath) {
-      this.path = gridPath.map(p => this.fromGrid(p));
-    } else {
-      this.path = [start, end];
-    }
-
-    this.pathRevealProgress = 0;
-    this.cameraProgress = 0;
-    this.isAnimatingPath = true;
-    this.needsRender = true;
-    this.computePathMetrics();
-    
-    const modal = document.getElementById("map-modal");
-    if (modal) modal.classList.remove("hide");
-    return target;
-  }
-
-  aStar(inputStart, inputEnd) {
-    const start = this.findNearestWalkable(inputStart.x, inputStart.y);
-    const end = this.findNearestWalkable(inputEnd.x, inputEnd.y);
+    const key = (p) => `${p.x},${p.y}`;
     let openSet = [start];
     let cameFrom = new Map();
     let gScore = new Map();
     let fScore = new Map();
-    const key = (p) => `${p.x},${p.y}`;
+
     gScore.set(key(start), 0);
-    fScore.set(key(start), Math.abs(start.x - end.x) + Math.abs(start.y - end.y));
+    fScore.set(key(start), Math.hypot(start.x - end.x, start.y - end.y));
 
     while (openSet.length > 0) {
-      let current = openSet.reduce((a, b) => fScore.get(key(a)) < fScore.get(key(b)) ? a : b);
+      let current = openSet.reduce((a, b) => (fScore.get(key(a)) < fScore.get(key(b)) ? a : b));
       if (current.x === end.x && current.y === end.y) {
         let path = [current];
         while (cameFrom.has(key(current))) {
@@ -283,170 +320,429 @@ class AirportNavigation {
         }
         return path;
       }
-      openSet = openSet.filter(n => n !== current);
-      const dirs = [{x:0,y:1},{x:0,y:-1},{x:1,y:0},{x:-1,y:0},{x:1,y:1},{x:-1,y:-1},{x:1,y:-1},{x:-1,y:1}];
+
+      openSet = openSet.filter((n) => n !== current);
+      const dirs = [
+        { x: 0, y: 1 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: -1, y: 0 },
+        { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+      ];
+
       for (let d of dirs) {
         let neighbor = { x: current.x + d.x, y: current.y + d.y };
         if (this.isGridBlocked(neighbor.x, neighbor.y)) continue;
+
         if (d.x !== 0 && d.y !== 0) {
-          if (this.isGridBlocked(current.x + d.x, current.y) && this.isGridBlocked(current.x, current.y + d.y)) continue;
+          if (this.isGridBlocked(current.x + d.x, current.y) && this.isGridBlocked(current.x, current.y + d.y)) {
+            continue;
+          }
         }
-        let tentativeG = gScore.get(key(current)) + (d.x !== 0 && d.y !== 0 ? 1.4 : 1);
+
+        const moveCost = d.x !== 0 && d.y !== 0 ? 1.414 : 1.0;
+        let tentativeG = gScore.get(key(current)) + moveCost;
+
         if (!gScore.has(key(neighbor)) || tentativeG < gScore.get(key(neighbor))) {
           cameFrom.set(key(neighbor), current);
           gScore.set(key(neighbor), tentativeG);
-          fScore.set(key(neighbor), tentativeG + Math.abs(neighbor.x - end.x) + Math.abs(neighbor.y - end.y));
-          if (!openSet.some(n => n.x === neighbor.x && n.y === neighbor.y)) openSet.push(neighbor);
+          fScore.set(key(neighbor), tentativeG + Math.hypot(neighbor.x - end.x, neighbor.y - end.y));
+          if (!openSet.some((n) => n.x === neighbor.x && n.y === neighbor.y)) {
+            openSet.push(neighbor);
+          }
         }
       }
     }
     return null;
   }
 
-  toGrid(p) { return { x: Math.round(p.x / this.gridSize), y: Math.round(p.y / this.gridSize) }; }
-  fromGrid(p) { return { x: p.x * this.gridSize, y: p.y * this.gridSize }; }
+  isLineBlocked(p1, p2) {
+    if (!this.collisionGrid) return false;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return false;
+
+    const steps = Math.ceil(dist * 2);
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const gx = Math.round(p1.x + dx * t);
+      const gy = Math.round(p1.y + dy * t);
+      if (this.isGridBlocked(gx, gy)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  simplifyPath(rawGridPath) {
+    if (!rawGridPath || rawGridPath.length < 3) return rawGridPath;
+
+    // String Pulling / Line-of-sight path shortening (Portals)
+    const simplified = [rawGridPath[0]];
+    let currentIdx = 0;
+
+    while (currentIdx < rawGridPath.length - 1) {
+      let furthestVisibleIdx = currentIdx + 1;
+
+      for (let testIdx = rawGridPath.length - 1; testIdx > currentIdx; testIdx--) {
+        if (!this.isLineBlocked(rawGridPath[currentIdx], rawGridPath[testIdx])) {
+          furthestVisibleIdx = testIdx;
+          break;
+        }
+      }
+
+      simplified.push(rawGridPath[furthestVisibleIdx]);
+      currentIdx = furthestVisibleIdx;
+    }
+
+    return simplified;
+  }
+
+  smoothPath(rawGridPath, startPos, endPos) {
+    if (!rawGridPath || rawGridPath.length < 2) {
+      if (startPos && endPos) return [startPos, endPos];
+      return [];
+    }
+
+    // 1. Agar start va end o'rtasida to'g'ri chiziqda to'siq bo'lmasa -> To'g'ridan-to'g'ri 100% tekis chiziq!
+    if (startPos && endPos) {
+      const gStart = { x: Math.round(startPos.x / this.gridSize), y: Math.round(startPos.y / this.gridSize) };
+      const gEnd = { x: Math.round(endPos.x / this.gridSize), y: Math.round(endPos.y / this.gridSize) };
+      if (!this.isLineBlocked(gStart, gEnd)) {
+        return [startPos, endPos];
+      }
+    }
+
+    // 2. Line of sight (String pulling) orqali zigzag kataklarni olib tashlash
+    const simpleGrid = this.simplifyPath(rawGridPath);
+    let worldPts = simpleGrid.map((p) => ({ x: p.x * this.gridSize, y: p.y * this.gridSize }));
+
+    if (startPos) worldPts[0] = { x: startPos.x, y: startPos.y };
+    if (endPos) worldPts[worldPts.length - 1] = { x: endPos.x, y: endPos.y };
+
+    if (worldPts.length <= 2) {
+      return worldPts;
+    }
+
+    // 3. To'siqlar atrofidagi burilish burchaklarini qisqa silliqlash (Chaikin)
+    let pts = worldPts;
+    for (let iteration = 0; iteration < 2; iteration++) {
+      if (pts.length < 3) break;
+      const smoothed = [pts[0]];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i];
+        const p1 = pts[i + 1];
+        smoothed.push({
+          x: 0.85 * p0.x + 0.15 * p1.x,
+          y: 0.85 * p0.y + 0.15 * p1.y
+        });
+        smoothed.push({
+          x: 0.15 * p0.x + 0.85 * p1.x,
+          y: 0.15 * p0.y + 0.85 * p1.y
+        });
+      }
+      smoothed.push(pts[pts.length - 1]);
+      pts = smoothed;
+    }
+    return pts;
+  }
 
   computePathMetrics() {
-    this.pathSegments = []; this.totalPathLength = 0;
-    if (!this.path) return;
-    for (let i = 1; i < this.path.length; i++) {
-        const len = Math.hypot(this.path[i].x - this.path[i-1].x, this.path[i].y - this.path[i-1].y);
-        this.pathSegments.push(len);
-        this.totalPathLength += len;
+    this.pathSegments = [];
+    this.totalPathLength = 0;
+    if (!this.smoothedPath || this.smoothedPath.length < 2) return;
+
+    for (let i = 1; i < this.smoothedPath.length; i++) {
+      const len = Math.hypot(
+        this.smoothedPath[i].x - this.smoothedPath[i - 1].x,
+        this.smoothedPath[i].y - this.smoothedPath[i - 1].y
+      );
+      this.pathSegments.push(len);
+      this.totalPathLength += len;
     }
   }
 
   getPointAtProgress(progress) {
-    if (!this.path || this.path.length < 2) return null;
+    if (!this.smoothedPath || this.smoothedPath.length < 2) return null;
     const target = this.totalPathLength * progress;
     let current = 0;
-    for (let i = 1; i < this.path.length; i++) {
-        const seg = this.pathSegments[i-1];
-        if (current + seg >= target) {
-            const t = (target - current) / seg;
-            return {
-                x: this.path[i-1].x + (this.path[i].x - this.path[i-1].x) * t,
-                y: this.path[i-1].y + (this.path[i].y - this.path[i-1].y) * t,
-                dirX: (this.path[i].x - this.path[i-1].x) / seg,
-                dirY: (this.path[i].y - this.path[i-1].y) / seg
-            };
-        }
-        current += seg;
+
+    for (let i = 1; i < this.smoothedPath.length; i++) {
+      const seg = this.pathSegments[i - 1];
+      if (current + seg >= target) {
+        const t = (target - current) / (seg || 1);
+        return {
+          x: this.smoothedPath[i - 1].x + (this.smoothedPath[i].x - this.smoothedPath[i - 1].x) * t,
+          y: this.smoothedPath[i - 1].y + (this.smoothedPath[i].y - this.smoothedPath[i - 1].y) * t,
+        };
+      }
+      current += seg;
     }
-    const last = this.path[this.path.length-1];
-    return { x: last.x, y: last.y, dirX: 1, dirY: 0 };
+    return this.smoothedPath[this.smoothedPath.length - 1];
+  }
+
+  findPath(targetName) {
+    if (!this.mapReady) {
+      this.pendingTarget = targetName;
+      return null;
+    }
+
+    const tLower = String(targetName).trim().toLowerCase();
+    const target = this.nodes.find((n) => (n.name || "").trim().toLowerCase() === tLower) ||
+      this.nodes.find((n) => (n.name || "").trim().toLowerCase().includes(tLower));
+
+    if (!target) {
+      console.warn("[NAV] Target not found:", targetName);
+      return null;
+    }
+
+    this.targetNode = target;
+    const startPos = this.kioskPos;
+    const endPos = { x: Number(target.pos_x), y: Number(target.pos_y) };
+
+    console.log("[NAV] Routing to:", target.name, "| Start:", startPos, "| End:", endPos);
+
+    const rawPath = this.aStar(startPos, endPos);
+    this.smoothedPath = this.smoothPath(rawPath, startPos, endPos);
+
+    this.computePathMetrics();
+    this.pathRevealProgress = 0;
+    this.cameraProgress = 0;
+    this.isAnimatingPath = true;
+    this.userHasPanned = false;
+    this.needsRender = true;
+
+    // Show Map Modal
+    const modal = document.getElementById("map-modal");
+    if (modal) modal.classList.remove("hide");
+
+    return target;
+  }
+
+  navigateTo(posX, posY, name) {
+    this.targetNode = { name: name || "Manzil", pos_x: posX, pos_y: posY };
+    const startPos = this.kioskPos;
+    const endPos = { x: Number(posX), y: Number(posY) };
+
+    const rawPath = this.aStar(startPos, endPos);
+    this.smoothedPath = this.smoothPath(rawPath, startPos, endPos);
+
+    this.computePathMetrics();
+    this.pathRevealProgress = 0;
+    this.cameraProgress = 0;
+    this.isAnimatingPath = true;
+    this.userHasPanned = false;
+    this.needsRender = true;
+  }
+
+  animate() {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
+    this.lastFrameTime = now;
+    this.pulsePhase = (this.pulsePhase + dt * 2.5) % (Math.PI * 2);
+
+    if (this.isAnimatingPath) {
+      const step = dt / this.pathDrawDuration;
+      this.pathRevealProgress = Math.min(1, this.pathRevealProgress + step);
+      this.cameraProgress = Math.min(1, this.cameraProgress + step * 0.9);
+
+      if (this.pathRevealProgress >= 1 && this.cameraProgress >= 1) {
+        this.isAnimatingPath = false;
+      }
+      this.needsRender = true;
+    }
+
+    if (this.needsRender || this.isAnimatingPath || this.smoothedPath.length > 0) {
+      this.render();
+    }
+
+    requestAnimationFrame(() => this.animate());
   }
 
   render() {
-    if (!this.canvas) return;
+    if (!this.canvas || !this.ctx) return;
     if (!this.backgroundImage.complete || this.backgroundImage.naturalWidth === 0) {
-      console.warn('[NAV] Background image not ready yet');
       return;
     }
-    if (this.canvas.width < 10 || this.canvas.height < 10) this.resizeCanvasToContainer();
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.imageSmoothingEnabled = true;
     this.ctx.imageSmoothingQuality = "high";
 
-    const follow = window.NAV_CAMERA_FOLLOW !== false;
-    const zoom = window.NAV_CAMERA_ZOOM || 1.7;
-    let cameraPos = null;
-    
-    if (follow && this.path && this.path.length > 1) {
-       cameraPos = this.getPointAtProgress(Math.min(this.cameraProgress, this.pathRevealProgress));
-    }
-
-    const wW = this.worldWidth || 1000;
-    const wH = this.worldHeight || 1000;
-    const fitScale = Math.min(this.canvas.width / wW, this.canvas.height / wH);
-    const scale = (cameraPos && follow) ? fitScale * zoom : fitScale;
-    this.pxScale = 1 / scale;
-
-    let offsetX = (this.canvas.width - wW * scale) / 2;
-    let offsetY = (this.canvas.height - wH * scale) / 2;
-
-    if (cameraPos && follow) {
-       offsetX = this.canvas.width/2 - cameraPos.x * scale;
-       offsetY = this.canvas.height/2 - cameraPos.y * scale;
-       offsetX = Math.min(0, Math.max(this.canvas.width - wW * scale, offsetX));
-       offsetY = Math.min(0, Math.max(this.canvas.height - wH * scale, offsetY));
+    // Auto camera follow along path if not manually panned
+    if (!this.userHasPanned && this.smoothedPath && this.smoothedPath.length > 1) {
+      const camPt = this.getPointAtProgress(Math.min(this.cameraProgress, this.pathRevealProgress));
+      if (camPt) {
+        const zoom = Math.min(this.maxScale, this.fitScale * 2.2);
+        this.scale = zoom;
+        this.panX = this.canvas.width / 2 - camPt.x * this.scale;
+        this.panY = this.canvas.height / 2 - camPt.y * this.scale;
+      }
     }
 
     this.ctx.save();
-    this.ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
+    this.ctx.setTransform(this.scale, 0, 0, this.scale, this.panX, this.panY);
+
+    // 1. Draw Map Image
     try {
-      this.ctx.drawImage(this.backgroundImage, 0, 0);
-    } catch (err) {
-      console.error('[NAV] drawImage error:', err);
-      this.ctx.restore();
-      return;
-    }
+      this.ctx.drawImage(this.backgroundImage, 0, 0, this.worldWidth, this.worldHeight);
+    } catch (e) {}
 
-    if (this.path && this.path.length >= 2) {
-      this.ctx.strokeStyle = window.NAV_LINE_COLOR || "#ff3b30";
-      this.ctx.lineWidth = ((window.NAV_LINE_WIDTH || 12) / 2) * this.pxScale; // 2 barobar kichikroq
-      this.ctx.lineCap = "round"; this.ctx.lineJoin = "round";
-      
-      this.ctx.beginPath();
-      this.ctx.moveTo(this.path[0].x, this.path[0].y);
-      
-      const totalPoints = this.path.length;
-      const progressWeight = this.pathRevealProgress * (totalPoints - 1);
-      const fullPoints = Math.floor(progressWeight);
-      const partialSegment = progressWeight - fullPoints;
-
-      for (let i = 1; i <= fullPoints; i++) {
-        if (this.path[i]) this.ctx.lineTo(this.path[i].x, this.path[i].y);
-      }
-
-      if (partialSegment > 0 && fullPoints < totalPoints - 1) {
-        const p1 = this.path[fullPoints];
-        const p2 = this.path[fullPoints + 1];
-        if (p1 && p2) {
-            const px = p1.x + (p2.x - p1.x) * partialSegment;
-            const py = p1.y + (p2.y - p1.y) * partialSegment;
-            this.ctx.lineTo(px, py);
-        }
-      }
-      this.ctx.stroke();
-
-      this.ctx.fillStyle = "#007bff";
-      this.ctx.beginPath(); 
-      this.ctx.arc(this.path[0].x, this.path[0].y, 8 * this.pxScale, 0, Math.PI * 2); // 16 -> 8 (2 barobar kichik)
-      this.ctx.fill();
-      this.ctx.strokeStyle = "white";
-      this.ctx.lineWidth = 1.5 * this.pxScale; // 3 -> 1.5
-      this.ctx.stroke();
-
-      if (this.pathRevealProgress > 0.9) {
-          const last = this.path[this.path.length - 1];
-          if (last) {
-            this.ctx.fillStyle = "#ff3b30";
-            this.ctx.beginPath(); 
-            this.ctx.arc(last.x, last.y, 11 * this.pxScale, 0, Math.PI * 2); // 22 -> 11
-            this.ctx.fill();
-            this.ctx.strokeStyle = "white";
-            this.ctx.lineWidth = 2 * this.pxScale; // 4 -> 2
-            this.ctx.stroke();
-            this.ctx.fillStyle = "white";
-            this.ctx.beginPath();
-            this.ctx.arc(last.x, last.y, 4 * this.pxScale, 0, Math.PI * 2); // 8 -> 4
-            this.ctx.fill();
-          }
+    // 2. Draw Navigation Path
+    if (this.smoothedPath && this.smoothedPath.length >= 2) {
+      this.drawGlowingPath();
+      this.drawKioskMarker();
+      if (this.pathRevealProgress > 0.3) {
+        this.drawDestinationMarker();
       }
     }
+
+    this.ctx.restore();
+  }
+
+  drawGlowingPath() {
+    const totalPoints = this.smoothedPath.length;
+    const progressWeight = this.pathRevealProgress * (totalPoints - 1);
+    const fullPoints = Math.floor(progressWeight);
+    const partialSegment = progressWeight - fullPoints;
+
+    const currentPoints = [];
+    for (let i = 0; i <= fullPoints; i++) {
+      if (this.smoothedPath[i]) currentPoints.push(this.smoothedPath[i]);
+    }
+    if (partialSegment > 0 && fullPoints < totalPoints - 1) {
+      const p1 = this.smoothedPath[fullPoints];
+      const p2 = this.smoothedPath[fullPoints + 1];
+      if (p1 && p2) {
+        currentPoints.push({
+          x: p1.x + (p2.x - p1.x) * partialSegment,
+          y: p1.y + (p2.y - p1.y) * partialSegment
+        });
+      }
+    }
+
+    if (currentPoints.length < 2) return;
+
+    // Layer 1: Outer Neon Glow
+    this.ctx.beginPath();
+    this.ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
+    for (let i = 1; i < currentPoints.length; i++) {
+      this.ctx.lineTo(currentPoints[i].x, currentPoints[i].y);
+    }
+    this.ctx.strokeStyle = "rgba(0, 210, 255, 0.45)";
+    this.ctx.lineWidth = 18 / this.scale;
+    this.ctx.lineCap = "round";
+    this.ctx.lineJoin = "round";
+    this.ctx.stroke();
+
+    // Layer 2: Vibrant Core Neon Line
+    this.ctx.beginPath();
+    this.ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
+    for (let i = 1; i < currentPoints.length; i++) {
+      this.ctx.lineTo(currentPoints[i].x, currentPoints[i].y);
+    }
+    this.ctx.strokeStyle = "#00f2fe";
+    this.ctx.lineWidth = 8 / this.scale;
+    this.ctx.stroke();
+
+    // Layer 3: Inner White Highlight
+    this.ctx.beginPath();
+    this.ctx.moveTo(currentPoints[0].x, currentPoints[0].y);
+    for (let i = 1; i < currentPoints.length; i++) {
+      this.ctx.lineTo(currentPoints[i].x, currentPoints[i].y);
+    }
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 3 / this.scale;
+    this.ctx.stroke();
+  }
+
+  drawKioskMarker() {
+    const p = this.kioskPos;
+    const r = 16 / this.scale;
+    const pulseR = r * (1 + 0.6 * Math.sin(this.pulsePhase));
+
+    // Radar pulse wave
+    this.ctx.beginPath();
+    this.ctx.arc(p.x, p.y, pulseR, 0, Math.PI * 2);
+    this.ctx.strokeStyle = `rgba(0, 255, 136, ${Math.max(0.1, 0.7 - 0.5 * Math.sin(this.pulsePhase))})`;
+    this.ctx.lineWidth = 3 / this.scale;
+    this.ctx.stroke();
+
+    // Solid Beacon Core
+    this.ctx.beginPath();
+    this.ctx.arc(p.x, p.y, r * 0.7, 0, Math.PI * 2);
+    this.ctx.fillStyle = "#00ff88";
+    this.ctx.fill();
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 2.5 / this.scale;
+    this.ctx.stroke();
+
+    // Label
+    this.drawMarkerLabel(p.x, p.y - r * 1.5, "SIZ SHU YERDASIZ", "#00ff88");
+  }
+
+  drawDestinationMarker() {
+    if (!this.targetNode) return;
+    const p = { x: Number(this.targetNode.pos_x), y: Number(this.targetNode.pos_y) };
+    const r = 18 / this.scale;
+    const pulseR = r * (1 + 0.5 * Math.sin(this.pulsePhase + Math.PI));
+
+    // Outer Target Pulse
+    this.ctx.beginPath();
+    this.ctx.arc(p.x, p.y, pulseR, 0, Math.PI * 2);
+    this.ctx.strokeStyle = `rgba(255, 59, 48, ${Math.max(0.1, 0.8 - 0.5 * Math.sin(this.pulsePhase))})`;
+    this.ctx.lineWidth = 3.5 / this.scale;
+    this.ctx.stroke();
+
+    // Target Pin Core
+    this.ctx.beginPath();
+    this.ctx.arc(p.x, p.y, r * 0.8, 0, Math.PI * 2);
+    this.ctx.fillStyle = "#ff3b30";
+    this.ctx.fill();
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 3 / this.scale;
+    this.ctx.stroke();
+
+    // Inner White Dot
+    this.ctx.beginPath();
+    this.ctx.arc(p.x, p.y, r * 0.3, 0, Math.PI * 2);
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.fill();
+
+    // Destination Name Badge
+    const label = this.targetNode.name || "Manzil";
+    this.drawMarkerLabel(p.x, p.y - r * 1.6, label.toUpperCase(), "#ff3b30");
+  }
+
+  drawMarkerLabel(x, y, text, colorHex) {
+    this.ctx.save();
+    this.ctx.font = `bold ${Math.max(12, 15 / this.scale)}px 'Orbitron', 'Outfit', sans-serif`;
+    const textWidth = this.ctx.measureText(text).width;
+    const padX = 8 / this.scale;
+    const padY = 4 / this.scale;
+    const boxH = 22 / this.scale;
+
+    // Background pill
+    this.ctx.fillStyle = "rgba(5, 12, 24, 0.9)";
+    this.ctx.strokeStyle = colorHex;
+    this.ctx.lineWidth = 1.5 / this.scale;
+    this.ctx.beginPath();
+    this.ctx.roundRect(x - textWidth / 2 - padX, y - boxH, textWidth + padX * 2, boxH, 4 / this.scale);
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Text
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText(text, x, y - boxH / 2);
     this.ctx.restore();
   }
 }
 
-
-// Global funksiya - 3D globusdan chaqirish uchun
-window.navigateToLocation = function(locationName) {
-  if (window.airportNav && typeof window.airportNav.findPath === 'function') {
-    console.log('[GLOBAL] Navigating to:', locationName);
+// Global hook
+window.AirportNavigation = AirportNavigation;
+window.navigateToLocation = function (locationName) {
+  if (window.airportNav && typeof window.airportNav.findPath === "function") {
+    console.log("[GLOBAL] Navigating to:", locationName);
     window.airportNav.findPath(locationName);
-  } else {
-    console.error('[GLOBAL] airportNav not found');
   }
 };

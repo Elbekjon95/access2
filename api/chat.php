@@ -1,10 +1,17 @@
 <?php
 /**
- * ACCSESS - Chat API
+ * ACSESS - Chat API
  * Refactored to use modular classes and helpers.
  */
 
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
+secureSessionStart();
+
+if (!isset($_SESSION['user_id']) && !isset($_SESSION['admin_id'])) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Ruxsat yo\'q']);
+    exit;
+}
 require_once 'uzbek_helper.php'; 
 require_once 'flights.php';
 require_once 'chat_helpers.php';
@@ -24,14 +31,8 @@ try {
     $userMessage = $input['message'] ?? '';
     $forcedLang = $input['language'] ?? '';
 
-    // Til kodi tekshiruvi va normalizatsiya
-    $allowedLangs = ['uz', 'ru', 'en', 'es', 'zh', 'hi', 'ar', 'bn', 'pt', 'ja', 'de', 'fr', 'it', 'ko', 'tr', 'ur', 'tg', 'ky', 'kk', 'tk'];
-    if (!in_array($forcedLang, $allowedLangs, true)) {
-        $forcedLang = '';
-    }
-    
-    // Agar 'auto' bo'lsa, uni bo'sh qilib qo'yamiz (detectLanguage ishlashi uchun)
-    if ($forcedLang === 'auto') {
+    // Til kodi tekshiruvi
+    if (!in_array($forcedLang, ['uz', 'ru', 'en', 'es', 'zh', 'hi', 'ar', 'bn', 'pt', 'ja', 'de', 'fr', 'it', 'ko', 'tr', 'ur', 'tg', 'ky', 'kk', 'tk'], true)) {
         $forcedLang = '';
     }
 
@@ -46,12 +47,11 @@ try {
     $allFlights = getProcessedFlights($isDateQuery); 
 
     // Lokatsiyalarni olish
-    $pdo = getDbConnection();
-    $stmtMap = $pdo->query("SELECT name, type FROM map_points");
-    $mapPoints = $stmtMap->fetchAll(PDO::FETCH_ASSOC);
+    $db = getDbConnection();
+    $mapPoints = $db->find('map_points', [], ['projection' => ['name' => 1, 'type' => 1]]);
 
     // ChatHandler orqali ishlov berish
-    $handler = new ChatHandler($pdo, $allFlights, $mapPoints);
+    $handler = new ChatHandler($db, $allFlights, $mapPoints);
     $response = $handler->handle($userMessage, $forcedLang);
 
     if (ob_get_level() > 0) ob_clean();

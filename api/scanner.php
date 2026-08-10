@@ -1,12 +1,13 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 header('Content-Type: application/json');
 
 try {
-    $pdo = getDbConnection();
-    $stmt = $pdo->query("SELECT name, type, pos_x, pos_y FROM map_points");
-    $mapNodes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $db = getDbConnection();
+    $mapNodes = $db->find('map_points', [], [
+        'projection' => ['name' => 1, 'type' => 1, 'pos_x' => 1, 'pos_y' => 1]
+    ]);
     echo json_encode($mapNodes);
-} catch (PDOException $e) {
+} catch (Throwable $e) {
     echo json_encode(['error' => $e->getMessage()]);
 }

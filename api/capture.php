@@ -1,5 +1,5 @@
 <?php
-require_once '../config.php';
+require_once __DIR__ . '/../config.php';
 session_start();
 
 header('Content-Type: application/json');
@@ -43,9 +43,11 @@ if (!file_put_contents($filePath, $data)) {
 
 try {
     $db = getDbConnection();
-    $stmt = $db->prepare("INSERT INTO customer_captures (image_path) VALUES (?)");
-    $stmt->execute(['img/captures/' . $fileName]);
-    echo json_encode(['status' => 'success', 'path' => 'img/captures/' . $fileName]);
+    $insertedId = $db->insertOne('customer_captures', [
+        'image_path' => 'img/captures/' . $fileName,
+        'captured_at' => date('Y-m-d H:i:s')
+    ]);
+    echo json_encode(['status' => 'success', 'path' => 'img/captures/' . $fileName, 'id' => $insertedId]);
 } catch (Throwable $e) {
     echo json_encode(['status' => 'error', 'message' => 'DB error: ' . $e->getMessage()]);
 }
