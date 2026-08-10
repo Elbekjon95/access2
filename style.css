@@ -84,31 +84,37 @@ html, body {
 
 header {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
+    justify-content: center;
     width: 100%;
-    gap: 0.3rem;
+    gap: clamp(3px, 0.8vh, 8px);
+    text-align: center;
 }
 
 .logo-text {
     font-family: 'Orbitron', sans-serif;
     font-size: var(--logo-size);
     font-weight: 700;
-    letter-spacing: clamp(0.05rem, 0.4vw, 0.3rem);
+    letter-spacing: clamp(0.08rem, 0.4vw, 0.35rem);
     background: linear-gradient(to right, var(--text-white), var(--secondary-blue));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     white-space: nowrap;
+    text-align: center;
+    margin: 0 auto;
 }
 
 #status-bar {
     display: flex;
-    gap: clamp(0.3rem, 1vw, 1rem);
-    font-size: clamp(0.6rem, 1.1vw, 0.85rem);
-    opacity: 0.9;
+    justify-content: center;
     align-items: center;
-    flex-wrap: nowrap;
+    gap: clamp(4px, 1vw, 12px);
+    font-size: clamp(0.6rem, 1.1vw, 0.82rem);
+    opacity: 0.9;
+    flex-wrap: wrap;
+    margin: 0 auto;
 }
 
 .lang-dropdown {
@@ -1376,21 +1382,29 @@ header {
     }
     
     header {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-        gap: 0.2rem;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+        gap: 3px !important;
+        text-align: center !important;
     }
     
     .logo-text {
-        font-size: 0.85rem !important;
-        letter-spacing: 0.05rem !important;
+        font-size: 1.15rem !important;
+        letter-spacing: 0.08rem !important;
+        margin: 0 auto !important;
     }
     
     #status-bar {
-        font-size: 0.6rem !important;
-        gap: 0.25rem !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        font-size: 0.62rem !important;
+        gap: 5px !important;
+        flex-wrap: wrap !important;
+        margin: 0 auto !important;
     }
     
     #ai-status {
@@ -1398,23 +1412,23 @@ header {
     }
     
     #time-display {
-        font-size: 0.6rem !important;
+        font-size: 0.62rem !important;
     }
     
     .weather-temp-btn {
-        padding: 1px 4px !important;
-        font-size: 0.58rem !important;
+        padding: 2px 5px !important;
+        font-size: 0.6rem !important;
         border-radius: 4px !important;
     }
     
     .weather-temp-btn i, .weather-temp-btn span {
-        font-size: 0.58rem !important;
+        font-size: 0.6rem !important;
     }
     
     .lang-toggle {
         min-width: auto !important;
-        padding: 1px 4px !important;
-        font-size: 0.58rem !important;
+        padding: 2px 5px !important;
+        font-size: 0.6rem !important;
         border-radius: 4px !important;
         gap: 3px !important;
     }
@@ -1430,7 +1444,7 @@ header {
         text-decoration: none;
         font-size: 0.6rem;
         border: 1px solid var(--secondary-blue);
-        padding: 1px 4px;
+        padding: 2px 5px;
         border-radius: 4px;
         display: inline-flex;
         align-items: center;
@@ -1457,7 +1471,7 @@ header {
         align-items: center !important;
         width: 100% !important;
         max-width: 100% !important;
-        padding: 0 0 0.4rem 0 !important;
+        padding: 0 0 0.3rem 0 !important;
         margin: 0 auto !important;
     }
     
@@ -1473,16 +1487,16 @@ header {
     #chat-output.glass-panel {
         width: 94% !important;
         max-width: 360px !important;
-        margin: 0 auto 24px auto !important;
-        padding: 0.5rem 0.7rem !important;
-        border-radius: 12px !important;
+        margin: 0 auto 16px auto !important;
+        padding: 0.55rem 0.8rem !important;
+        border-radius: 14px !important;
         max-height: 18vh !important;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6), 0 0 8px rgba(0, 198, 255, 0.2) !important;
     }
     
     #assistant-text {
-        font-size: 0.75rem !important;
-        line-height: 1.3 !important;
+        font-size: 0.78rem !important;
+        line-height: 1.35 !important;
         min-height: auto !important;
         text-align: center !important;
     }
@@ -1493,67 +1507,70 @@ header {
         flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
-        gap: 8px !important;
+        gap: 10px !important;
         width: 100% !important;
-        max-width: 400px !important;
+        max-width: 380px !important;
         margin: 0 auto !important;
-        padding: 0 6px !important;
+        padding: 0 4px !important;
         box-sizing: border-box !important;
     }
     
-    /* 4-Pog'ona: Mikrofon va ovoz boshqaruvi */
+    /* 5-Pog'ona: Mikrofon va ovoz boshqaruvi - Katta va Qoq Markazda */
     .voice-controls {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 12px !important;
+        gap: 14px !important;
         width: 100% !important;
         padding: 0 !important;
         transform: none !important;
+        margin: 0 auto !important;
     }
     
     .mic-btn {
-        width: 52px !important;
-        height: 52px !important;
-        min-width: 52px !important;
-        font-size: 1.3rem !important;
+        width: 60px !important;
+        height: 60px !important;
+        min-width: 60px !important;
+        font-size: 1.45rem !important;
         margin: 0 !important;
+        box-shadow: 0 0 25px rgba(0, 198, 255, 0.5) !important;
     }
     
     .action-btn {
-        width: 28px !important;
-        height: 28px !important;
-        min-width: 28px !important;
-        font-size: 0.72rem !important;
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        font-size: 0.8rem !important;
     }
     
-    /* 5-Pog'ona: 4 ta Asosiy Xizmat Tugmalari */
+    /* 6-Pog'ona: 4 ta Asosiy Xizmat Tugmasi - Ixcham va 100% sig'adi */
     .nav-buttons-group {
         display: grid !important;
         grid-template-columns: repeat(4, 1fr) !important;
-        gap: 6px !important;
+        gap: 5px !important;
         width: 100% !important;
+        margin: 0 auto !important;
     }
     
     .nav-buttons-group .nav-btn {
         flex: 1 1 0 !important;
         min-width: 0 !important;
-        padding: 6px 3px !important;
-        font-size: 0.68rem !important;
-        min-height: 40px !important;
-        border-radius: 12px !important;
+        padding: 5px 2px !important;
+        font-size: 0.58rem !important;
+        min-height: 35px !important;
+        border-radius: 10px !important;
         white-space: nowrap !important;
         text-align: center !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 3px !important;
+        gap: 2px !important;
         letter-spacing: 0px !important;
     }
     
     .nav-buttons-group .nav-btn i {
-        font-size: 0.85rem !important;
+        font-size: 0.75rem !important;
     }
     
     .btn-complaint-pill {
