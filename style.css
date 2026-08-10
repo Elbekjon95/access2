@@ -7,12 +7,19 @@
     --glass-border: rgba(255, 255, 255, 0.2);
     --accent-glow: 0 0 20px rgba(0, 198, 255, 0.5);
 
-    /* Dinamik proporsional o'lchamlar (ekran kichrayishi bilan barcha matn va iconlar mutanosib kichrayadi) */
-    --logo-size: clamp(1.15rem, 3.5vw, 2.5rem);
-    --assistant-size: clamp(0.85rem, 2.2vw, 1.35rem);
-    --nav-btn-size: clamp(0.68rem, 1.4vw, 0.95rem);
-    --mic-size: clamp(52px, 9vw, 76px);
-    --icon-size: clamp(0.8rem, 1.8vw, 1.3rem);
+    /* O'ta ixcham dinamik proporsional o'lchamlar */
+    --logo-size: clamp(0.95rem, 2.5vw, 2.2rem);
+    --assistant-size: clamp(0.78rem, 1.8vw, 1.25rem);
+    --nav-btn-size: clamp(0.58rem, 1.1vw, 0.88rem);
+    --mic-size: clamp(42px, 6.5vw, 68px);
+    --icon-size: clamp(0.75rem, 1.5vw, 1.2rem);
+}
+
+.short-text {
+    display: none;
+}
+.full-text {
+    display: inline;
 }
 
 * {
@@ -1502,13 +1509,17 @@ header {
         font-size: 0.85rem !important;
     }
     
+    .short-text {
+        display: inline !important;
+    }
+    .full-text {
+        display: none !important;
+    }
+    
     #btn-complaint {
-        font-size: 0.55rem !important;
-        line-height: 1.1 !important;
-        padding: 4px 5px !important;
-        max-width: 85px !important;
+        font-size: 0.62rem !important;
+        padding: 5px 6px !important;
         min-height: 36px !important;
-        white-space: normal !important;
     }
     
     /* Modal mobil konteyner */

@@ -68,7 +68,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
-    <link rel="stylesheet" href="style.css?v=1.4.0">
+    <link rel="stylesheet" href="style.css?v=1.4.1">
     <link rel="preload" href="img/airport_map_opt.webp" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -339,7 +339,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
                     <button id="btn-stop-voice" class="action-btn" title="Stop" aria-label="Stop assistant voice"><i class="fas fa-stop"></i></button>
                 </div>
                 <button id="btn-flights" class="nav-btn">Reyslar</button>
-                <button id="btn-complaint" class="nav-btn" style="background: rgba(255,82,82,0.2); border-color: #ff5252;" title="E'tiroz va taklif qoldirish">E'tiroz va taklif qoldirish</button>
+                <button id="btn-complaint" class="nav-btn" style="background: rgba(255,82,82,0.2); border-color: #ff5252;" title="E'tiroz va taklif qoldirish"><span class="full-text">E'tiroz va taklif</span><span class="short-text">E'tiroz</span></button>
             </nav>
         </main>
 
