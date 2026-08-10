@@ -68,7 +68,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
-    <link rel="stylesheet" href="style.css?v=1.4.4">
+    <link rel="stylesheet" href="style.css?v=1.4.5">
     <link rel="preload" href="img/airport_map_opt.webp" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -329,17 +329,19 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
             </section>
 
             <nav id="bottom-nav">
-                <button id="btn-map" class="nav-btn"><span class="full-text">Harita</span><span class="short-text">Xarita</span></button>
-                <button id="btn-call" class="nav-btn btn-call-circle" title="Operatorga qo'ng'iroq"><i class="fas fa-phone-alt"></i></button>
                 <div class="voice-controls">
                     <button id="btn-pause-voice" class="action-btn" title="Pause/Resume" aria-label="Pause or resume assistant voice"><i class="fas fa-pause"></i></button>
-                    <button id="btn-voice" class="nav-btn mic-btn pulsing">
+                    <button id="btn-voice" class="nav-btn mic-btn pulsing" title="Gapirish">
                         <i class="fas fa-microphone"></i>
                     </button>
                     <button id="btn-stop-voice" class="action-btn" title="Stop" aria-label="Stop assistant voice"><i class="fas fa-stop"></i></button>
                 </div>
-                <button id="btn-flights" class="nav-btn">Reyslar</button>
-                <button id="btn-complaint" class="nav-btn btn-complaint-pill" title="E'tiroz va taklif qoldirish"><span class="full-text">E'tiroz va taklif</span><span class="short-text">E'tiroz</span></button>
+                <div class="nav-buttons-group">
+                    <button id="btn-map" class="nav-btn"><i class="fas fa-map-marked-alt"></i> <span>Harita</span></button>
+                    <button id="btn-call" class="nav-btn" title="Operatorga qo'ng'iroq"><i class="fas fa-phone-alt"></i> <span>Operator</span></button>
+                    <button id="btn-flights" class="nav-btn"><i class="fas fa-plane-departure"></i> <span>Reyslar</span></button>
+                    <button id="btn-complaint" class="nav-btn btn-complaint-pill" title="E'tiroz va taklif qoldirish"><i class="fas fa-comment-alt"></i> <span>E'tiroz</span></button>
+                </div>
             </nav>
         </main>
 
