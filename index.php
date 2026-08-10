@@ -70,13 +70,14 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
     
     <!-- PWA Settings -->
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#050b14">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ACCSESS">
-    <link rel="apple-touch-icon" href="img/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/img/icons/icon-192.png">
     
     <link rel="stylesheet" href="style.css?v=1.5.3">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
