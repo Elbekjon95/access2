@@ -191,52 +191,102 @@ class ChatHandler {
 
     private function getFlightContext($userMessage = '') {
         $flights = $this->flights;
+        if (empty($flights)) return "FLIGHTS: No flight data available.\n";
         
-        // 1. Vaqt bo'yicha saralash
-        usort($flights, function($a, $b) {
-            return strcmp($a['time'] ?? '00:00', $b['time'] ?? '00:00');
-        });
-
-        // Hozirgi vaqtdan keyingi yuz beradigan reyslarni birinchi o'ringa qo'yish
         $currentTime = date('H:i');
+        $msgLower = mb_strtolower($userMessage, 'UTF-8');
+
+        // 1. Foydalanuvchi qidirayotgan shahar/aeroport kalit so'zlari
+        $cityKeywords = [
+            'moscow' => ['moscow', 'moskva', 'москва', 'dme', 'vko', 'svo', 'vnukovo', 'domodedovo', 'sheremetyevo'],
+            'dubai' => ['dubai', 'dubay', 'дубай', 'dxb', 'dwc'],
+            'istanbul' => ['istanbul', 'istambul', 'стамбул', 'истанбул', 'ist', 'saw', 'sabiha'],
+            'almaty' => ['almaty', 'olmaota', 'алматы', 'алма-ата', 'ala'],
+            'astana' => ['astana', 'ostona', 'nur-sultan', 'астана', 'nqz', 'tse'],
+            'grozny' => ['grozny', 'grozniy', 'грозный', 'grv'],
+            'novosibirsk' => ['novosibirsk', 'новосибирск', 'ovb', 'tolmachevo'],
+            'shanghai' => ['shanghai', 'shanxay', 'шанхай', 'pvg'],
+            'tyumen' => ['tyumen', 'tyumen', 'тюмень', 'tjm'],
+            'sochi' => ['sochi', 'сочи', 'aer', 'adler'],
+            'seoul' => ['seoul', 'seul', 'сеул', 'icn', 'incheon'],
+            'tokyo' => ['tokyo', 'tokio', 'токио', 'nrt', 'narita'],
+            'beijing' => ['beijing', 'pekin', 'пекин', 'pkx', 'pek'],
+            'delhi' => ['delhi', 'deli', 'дели', 'del'],
+            'petersburg' => ['petersburg', 'peterburg', 'петербург', 'led', 'pulkovo'],
+            'samarkand' => ['samarkand', 'samarqand', 'самарканд', 'skd'],
+            'bukhara' => ['bukhara', 'buxoro', 'бухара', 'bhk'],
+            'urgench' => ['urgench', 'urganch', 'ургенч', 'ugc'],
+            'nukus' => ['nukus', 'нукус', 'ncu'],
+            'fergana' => ['fergana', 'fargona', 'farg\'ona', 'фергана', 'feg'],
+            'namangan' => ['namangan', 'наманган', 'nma'],
+            'andijan' => ['andijan', 'andijon', 'андижан', 'azn']
+        ];
+
+        // Qidirilayotgan kalit so'zlarni aniqlash
+        $matchedKeywords = [];
+        foreach ($cityKeywords as $mainCity => $aliases) {
+            foreach ($aliases as $alias) {
+                if (mb_strpos($msgLower, $alias) !== false) {
+                    $matchedKeywords = array_merge($matchedKeywords, $aliases);
+                    break;
+                }
+            }
+        }
+
+        // IATA kod bo'yicha ham tekshirish
+        $iataCode = UzbekDictionaryHelper::findCity($userMessage);
+        if ($iataCode) {
+            $matchedKeywords[] = mb_strtolower($iataCode, 'UTF-8');
+        }
+
+        // 2. Reyslarni saralash: mos kelganlar va vaqti yaqinlar
+        $matchingFlights = [];
         $upcomingFlights = [];
         $pastFlights = [];
-        foreach($flights as $f) {
-            if (($f['time'] ?? '00:00') >= $currentTime) {
+
+        foreach ($flights as $f) {
+            $fromLower = mb_strtolower($f['from'] ?? '', 'UTF-8');
+            $toLower = mb_strtolower($f['to'] ?? '', 'UTF-8');
+            $flightNoLower = mb_strtolower($f['flight_no'] ?? '', 'UTF-8');
+            $fTime = $f['time'] ?? '00:00';
+
+            $isMatch = false;
+            if (!empty($matchedKeywords)) {
+                foreach ($matchedKeywords as $kw) {
+                    if (mb_strpos($fromLower, $kw) !== false || mb_strpos($toLower, $kw) !== false || mb_strpos($flightNoLower, $kw) !== false) {
+                        $isMatch = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($isMatch) {
+                $matchingFlights[] = $f;
+            } elseif ($fTime >= $currentTime) {
                 $upcomingFlights[] = $f;
             } else {
                 $pastFlights[] = $f;
             }
         }
-        $flights = array_merge($upcomingFlights, $pastFlights);
 
-        // 2. Agar foydalanuvchi ma'lum bir shaharni/kodni so'rayotgan bo'lsa, o'sha shaharni birinchi o'ringa chiqarish
-        $cityCode = UzbekDictionaryHelper::findCity($userMessage);
-        $relevantsAdded = false;
-        if ($cityCode) {
-            $relevant = [];
-            $others = [];
-            foreach ($flights as $f) {
-                // 'to' yoki 'from' da shahar/aviakompaniya kodi qatnashganini tekshirish
-                if (stripos($f['from'] ?? '', $cityCode) !== false || stripos($f['to'] ?? '', $cityCode) !== false ||
-                    stripos($f['flight_no'] ?? '', $cityCode) !== false) {
-                    $relevant[] = $f;
-                } else {
-                    $others[] = $f;
-                }
-            }
-            $flights = array_merge($relevant, $others);
-            $relevantsAdded = count($relevant) > 0;
-        }
+        // Vaqt bo'yicha saralash
+        $sortByTime = function($a, $b) {
+            return strcmp($a['time'] ?? '00:00', $b['time'] ?? '00:00');
+        };
+        usort($matchingFlights, $sortByTime);
+        usort($upcomingFlights, $sortByTime);
+        usort($pastFlights, $sortByTime);
 
-        // Tizim tez ishlashi uchun LLM tokenini tejaymiz.
-        // Agar shahar so'ragan bo'lsa, 30 ta ko'rsatamiz. Aks holda faqat keyingi 15 ta reys yetarli.
-        $limit = $relevantsAdded ? 30 : 15;
+        // Natijaviy ro'yxat: Birinchi mos kelganlar, keyin yaqin kelgusi reyslar
+        $finalList = array_merge($matchingFlights, $upcomingFlights, $pastFlights);
 
-        $ctx = "FLIGHTS (Current Time: " . date('H:i') . "):\n";
-        $ctx .= "Note: [departure] means TAS -> City, [arrival] means City -> TAS.\n";
-        foreach (array_slice($flights, 0, $limit) as $f) {
-            $ctx .= "- [{$f['type']}] {$f['flight_no']}|{$f['from']}->{$f['to']}|{$f['time']}|G:{$f['gate']}|S:{$f['status']}\n";
+        $limit = !empty($matchingFlights) ? 35 : 25;
+        $selectedFlights = array_slice($finalList, 0, $limit);
+
+        $ctx = "FLIGHTS (Current Local Time: {$currentTime}):\n";
+        $ctx .= "Note: [departure] = TAS -> Destination, [arrival] = Origin -> TAS.\n";
+        foreach ($selectedFlights as $f) {
+            $ctx .= "- [{$f['type']}] {$f['flight_no']}|{$f['from']} -> {$f['to']}|Time: {$f['time']}|Gate: {$f['gate']}|Status: {$f['status']}\n";
         }
         return $ctx;
     }

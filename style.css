@@ -531,8 +531,8 @@ header {
 .flights-tabs {
     display: flex;
     justify-content: center;
-    gap: 1rem;
-    padding: 1.5rem 1rem;
+    gap: 1.5rem;
+    padding: 1.2rem 1rem;
     background: linear-gradient(180deg, rgba(0, 198, 255, 0.05), transparent);
     border-bottom: 1px solid var(--glass-border);
 }
@@ -541,12 +541,12 @@ header {
     background: var(--glass-bg);
     border: 2px solid var(--glass-border);
     color: rgba(255, 255, 255, 0.7);
-    padding: 0.9rem 2.5rem;
+    padding: 0.8rem 2.2rem;
     border-radius: 12px;
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: 'Orbitron', sans-serif;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 1px;
     text-transform: uppercase;
@@ -558,31 +558,8 @@ header {
 }
 
 .flight-tab-btn i {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     transition: transform 0.3s ease;
-}
-
-.flight-tab-btn:hover i {
-    transform: translateX(3px);
-}
-
-.flight-tab-btn[data-type="arrival"]:hover i {
-    transform: translateX(-3px);
-}
-
-.flight-tab-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(0, 198, 255, 0.3), transparent);
-    transition: left 0.5s ease;
-}
-
-.flight-tab-btn:hover::before {
-    left: 100%;
 }
 
 .flight-tab-btn:hover {
@@ -597,30 +574,17 @@ header {
     border-color: var(--secondary-blue);
     color: white;
     box-shadow: 0 0 20px rgba(0, 198, 255, 0.5), inset 0 0 20px rgba(0, 198, 255, 0.1);
-    transform: scale(1.05);
-}
-
-.flight-tab-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60%;
-    height: 3px;
-    background: var(--secondary-blue);
-    box-shadow: 0 0 10px var(--secondary-blue);
-    border-radius: 2px;
 }
 
 #flights-table {
     width: 100%;
     border-collapse: collapse;
     color: white;
+    font-size: 0.92rem;
 }
 
 #flights-table th, #flights-table td {
-    padding: 1.2rem;
+    padding: 1rem 1.2rem;
     text-align: left;
     border-bottom: 1px solid var(--glass-border);
 }
@@ -629,7 +593,13 @@ header {
     color: var(--secondary-blue);
     font-family: 'Orbitron', sans-serif;
     text-transform: uppercase;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+}
+
+#flights-table th:nth-child(5),
+#flights-table td:nth-child(5) {
+    display: table-cell;
 }
 
 #flights-table tr:hover {
