@@ -583,36 +583,95 @@ header {
     width: 100%;
     border-collapse: collapse;
     color: white;
-    font-size: 1.1rem;
-}
-
-#flights-table th, #flights-table td {
-    padding: 1.2rem 1.6rem;
-    text-align: left;
-    border-bottom: 1px solid var(--glass-border);
-    vertical-align: middle;
 }
 
 #flights-table th {
     color: var(--secondary-blue);
     font-family: 'Orbitron', sans-serif;
     text-transform: uppercase;
-    font-size: 1rem;
+    font-size: 1.15rem;
     font-weight: 700;
-    letter-spacing: 1px;
-    background: rgba(0, 198, 255, 0.06);
-    border-bottom: 2px solid rgba(0, 198, 255, 0.35);
+    letter-spacing: 1.2px;
+    background: rgba(0, 198, 255, 0.08);
+    border-bottom: 2px solid rgba(0, 198, 255, 0.4);
+    padding: 1.4rem 1.8rem;
+    text-align: left;
 }
 
 #flights-table td {
-    font-size: 1.1rem;
-    font-weight: 500;
-    line-height: 1.5;
+    padding: 1.3rem 1.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+    vertical-align: middle;
 }
 
-#flights-table td strong {
+/* 1. Reys Ustuni */
+.col-flight .flight-dir {
+    display: block;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+.col-flight .flight-no {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #00f2fe;
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px;
+}
+
+/* 2. Yo'nalish Ustuni */
+.col-route {
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: #e2f1ff;
+}
+.col-route strong {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+.col-route i {
     font-size: 1.15rem;
+    margin: 0 8px;
+}
+
+/* 3. Vaqt Ustuni */
+.col-time .flight-time {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #ffffff;
+    font-family: 'Orbitron', monospace;
+    letter-spacing: 1px;
+}
+
+/* 4. Gate Ustuni */
+.col-gate .flight-gate {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #ffcc00;
+    font-family: 'Orbitron', sans-serif;
+    text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+}
+
+/* 5. Stoyka Ustuni */
+.col-counter .flight-counter {
+    font-size: 1.25rem;
     font-weight: 600;
+    color: #00e5ff;
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* 6. Holat Ustuni */
+.status-badge {
+    display: inline-block;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 #flights-table th:nth-child(5),

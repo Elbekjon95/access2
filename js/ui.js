@@ -181,18 +181,18 @@ export async function loadFlightsToTable(filterType = "departure") {
             routeHtml = `TAS <i class="fas fa-plane-departure" style="margin:0 5px;color:#ffcc00"></i> <strong>${f.to}</strong>`;
           }
 
-          const statusClass =
+          const statusStyle =
             f.status && f.status.toLowerCase().includes("uchib")
-              ? 'style="background:rgba(255,82,82,0.2);"'
-              : 'style="background:rgba(0,198,255,0.2);"';
+              ? "background:rgba(255,82,82,0.25); color:#ff7a7a; border:1px solid rgba(255,82,82,0.4);"
+              : "background:rgba(0,198,255,0.2); color:#00e5ff; border:1px solid rgba(0,198,255,0.35);";
 
           tr.innerHTML = `
-                <td style="font-weight:bold; color:var(--secondary-blue);">${directionBadge} <br/> ${f.flight_no}</td>
-                <td>${routeHtml}</td>
-                <td>${f.time}</td>
-                <td>${f.gate || "N/A"}</td>
-                <td>${f.checkin_counters || "N/A"}</td>
-                <td><span ${statusClass} class="status-badge">${f.status || "N/A"}</span></td>
+                <td class="col-flight"><span class="flight-dir">${directionBadge}</span><span class="flight-no">${f.flight_no}</span></td>
+                <td class="col-route">${routeHtml}</td>
+                <td class="col-time"><span class="flight-time">${f.time}</span></td>
+                <td class="col-gate"><span class="flight-gate">${f.gate || "-"}</span></td>
+                <td class="col-counter"><span class="flight-counter">${f.checkin_counters || "-"}</span></td>
+                <td class="col-status"><span style="${statusStyle}" class="status-badge">${f.status || "On schedule"}</span></td>
             `;
           tbody.appendChild(tr);
         });
