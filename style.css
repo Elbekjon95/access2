@@ -531,34 +531,36 @@ header {
 .flights-tabs {
     display: flex;
     justify-content: center;
-    gap: 1.5rem;
-    padding: 1.2rem 1rem;
-    background: linear-gradient(180deg, rgba(0, 198, 255, 0.05), transparent);
+    align-items: center;
+    gap: 2.5rem;
+    padding: 1.6rem 2rem;
+    background: rgba(0, 198, 255, 0.04);
     border-bottom: 1px solid var(--glass-border);
 }
 
 .flight-tab-btn {
     background: var(--glass-bg);
     border: 2px solid var(--glass-border);
-    color: rgba(255, 255, 255, 0.7);
-    padding: 0.8rem 2.2rem;
-    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.75);
+    padding: 1rem 3rem;
+    border-radius: 50px;
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: 'Orbitron', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 700;
     letter-spacing: 1px;
     text-transform: uppercase;
-    position: relative;
-    overflow: hidden;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.8rem;
+    justify-content: center;
+    gap: 1rem;
+    min-width: 280px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .flight-tab-btn i {
-    font-size: 1.1rem;
+    font-size: 1.25rem;
     transition: transform 0.3s ease;
 }
 
@@ -566,35 +568,51 @@ header {
     border-color: var(--secondary-blue);
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 198, 255, 0.3);
+    box-shadow: 0 5px 20px rgba(0, 198, 255, 0.4);
 }
 
 .flight-tab-btn.active {
-    background: linear-gradient(135deg, rgba(0, 198, 255, 0.3), rgba(0, 114, 255, 0.2));
+    background: linear-gradient(135deg, rgba(0, 198, 255, 0.4), rgba(0, 114, 255, 0.3));
     border-color: var(--secondary-blue);
-    color: white;
-    box-shadow: 0 0 20px rgba(0, 198, 255, 0.5), inset 0 0 20px rgba(0, 198, 255, 0.1);
+    color: #ffffff;
+    box-shadow: 0 0 25px rgba(0, 198, 255, 0.6), inset 0 0 15px rgba(0, 198, 255, 0.2);
+    transform: scale(1.02);
 }
 
 #flights-table {
     width: 100%;
     border-collapse: collapse;
     color: white;
-    font-size: 0.92rem;
+    font-size: 1.1rem;
 }
 
 #flights-table th, #flights-table td {
-    padding: 1rem 1.2rem;
+    padding: 1.2rem 1.6rem;
     text-align: left;
     border-bottom: 1px solid var(--glass-border);
+    vertical-align: middle;
 }
 
 #flights-table th {
     color: var(--secondary-blue);
     font-family: 'Orbitron', sans-serif;
     text-transform: uppercase;
-    font-size: 0.82rem;
-    letter-spacing: 0.5px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: rgba(0, 198, 255, 0.06);
+    border-bottom: 2px solid rgba(0, 198, 255, 0.35);
+}
+
+#flights-table td {
+    font-size: 1.1rem;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+#flights-table td strong {
+    font-size: 1.15rem;
+    font-weight: 600;
 }
 
 #flights-table th:nth-child(5),
@@ -603,7 +621,7 @@ header {
 }
 
 #flights-table tr:hover {
-    background: rgba(0, 198, 255, 0.1);
+    background: rgba(0, 198, 255, 0.12);
 }
 
 /* 3D Earth Modal - RIGHT SIDE Flight Info Panel */

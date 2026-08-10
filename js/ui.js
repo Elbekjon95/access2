@@ -228,9 +228,10 @@ export function initFlightsTabs() {
 
   tabBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
+      const currentBtn = e.currentTarget;
       tabBtns.forEach((b) => b.classList.remove("active"));
-      e.target.classList.add("active");
-      const type = e.target.getAttribute("data-type") || "departure";
+      currentBtn.classList.add("active");
+      const type = currentBtn.getAttribute("data-type") || "departure";
       loadFlightsToTable(type);
     });
   });
