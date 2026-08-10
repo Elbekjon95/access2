@@ -72,7 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACSESS Admin - Kirish</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#050b14">
+    <link rel="icon" type="image/png" sizes="192x192" href="/img/icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Outfit', sans-serif; background: #050a14; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }

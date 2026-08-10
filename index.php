@@ -2,9 +2,9 @@
 require_once 'config.php';
 secureSessionStart();
 
-if (!isset($_SESSION['user_id']) && !isset($_SESSION['admin_id'])) {
-    header("Location: admin/login.php");
-    exit;
+// Agar foydalanuvchi roli belgilanmagan bo'lsa, 'guest' deb belgilaymiz
+if (!isset($_SESSION['user_role'])) {
+    $_SESSION['user_role'] = 'guest';
 }
 
 // Xarita ma'lumotlarini olish
