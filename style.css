@@ -335,8 +335,6 @@ header {
 }
 
 #btn-call {
-    padding: 0.8rem 1.2rem;
-    font-size: 1.2rem;
     background: rgba(0, 198, 255, 0.12);
     border-color: var(--secondary-blue);
 }
@@ -346,13 +344,14 @@ header {
     box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
 }
 
-#btn-complaint {
-    font-size: 0.7rem;
-    padding: 0.7rem 1.2rem;
-    letter-spacing: 0.5px;
-    line-height: 1.2;
-    max-width: 160px;
-    text-align: center;
+.btn-complaint-pill {
+    background: rgba(255, 82, 82, 0.15);
+    border-color: #ff5252;
+}
+
+.btn-complaint-pill:hover {
+    background: rgba(255, 82, 82, 0.35);
+    box-shadow: 0 0 15px rgba(255, 82, 82, 0.4);
 }
 
 .pulsing {
@@ -1520,7 +1519,7 @@ header {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 14px !important;
+        gap: 16px !important;
         width: 100% !important;
         padding: 0 !important;
         transform: none !important;
@@ -1528,22 +1527,22 @@ header {
     }
     
     .mic-btn {
-        width: 60px !important;
-        height: 60px !important;
-        min-width: 60px !important;
-        font-size: 1.45rem !important;
+        width: 66px !important;
+        height: 66px !important;
+        min-width: 66px !important;
+        font-size: 1.65rem !important;
         margin: 0 !important;
-        box-shadow: 0 0 25px rgba(0, 198, 255, 0.5) !important;
+        box-shadow: 0 0 28px rgba(0, 198, 255, 0.55) !important;
     }
     
     .action-btn {
-        width: 32px !important;
-        height: 32px !important;
-        min-width: 32px !important;
-        font-size: 0.8rem !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        font-size: 0.9rem !important;
     }
     
-    /* 6-Pog'ona: 4 ta Asosiy Xizmat Tugmasi - Ixcham va 100% sig'adi */
+    /* 6-Pog'ona: 4 ta Asosiy Xizmat Tugmasi (Harita, Operator, Reyslar, E'tiroz - 100% bir xil) */
     .nav-buttons-group {
         display: grid !important;
         grid-template-columns: repeat(4, 1fr) !important;
@@ -1555,9 +1554,9 @@ header {
     .nav-buttons-group .nav-btn {
         flex: 1 1 0 !important;
         min-width: 0 !important;
-        padding: 5px 2px !important;
+        padding: 6px 2px !important;
         font-size: 0.58rem !important;
-        min-height: 35px !important;
+        min-height: 36px !important;
         border-radius: 10px !important;
         white-space: nowrap !important;
         text-align: center !important;
@@ -1565,12 +1564,17 @@ header {
         flex-direction: column !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 2px !important;
+        gap: 3px !important;
         letter-spacing: 0px !important;
     }
     
     .nav-buttons-group .nav-btn i {
-        font-size: 0.75rem !important;
+        font-size: 0.78rem !important;
+    }
+    
+    #btn-call {
+        background: rgba(0, 198, 255, 0.12) !important;
+        border: 1px solid var(--secondary-blue) !important;
     }
     
     .btn-complaint-pill {

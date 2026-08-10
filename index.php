@@ -68,7 +68,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
-    <link rel="stylesheet" href="style.css?v=1.4.6">
+    <link rel="stylesheet" href="style.css?v=1.4.7">
     <link rel="preload" href="img/airport_map_opt.webp" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
