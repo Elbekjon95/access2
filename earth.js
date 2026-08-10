@@ -235,6 +235,15 @@ window.resizeEarth = function () {
   earthCamera.updateProjectionMatrix();
 };
 
+window.addEventListener("resize", () => {
+  if (typeof window.resizeEarth === "function") window.resizeEarth();
+});
+window.addEventListener("orientationchange", () => {
+  setTimeout(() => {
+    if (typeof window.resizeEarth === "function") window.resizeEarth();
+  }, 200);
+});
+
 function latLongToVector3(latitude, longitude, radius, height) {
   const phi = (latitude * Math.PI) / 180;
   const theta = ((longitude - 180) * Math.PI) / 180;

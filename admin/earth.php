@@ -58,7 +58,7 @@ $page->renderSidebar();
 
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <script>window.API_BASE = "../";</script>
-<script src="../earth.js?v=1.3.4"></script>
+<script src="../earth.js?v=1.3.5"></script>
 <script>
     window.addEventListener('load', () => {
         setTimeout(() => {

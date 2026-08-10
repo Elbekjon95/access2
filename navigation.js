@@ -746,3 +746,18 @@ window.navigateToLocation = function (locationName) {
     window.airportNav.findPath(locationName);
   }
 };
+
+// Responsive resize & orientation change handler
+window.addEventListener("resize", () => {
+  if (window.airportNav && typeof window.airportNav.resizeCanvasToContainer === "function") {
+    window.airportNav.resizeCanvasToContainer();
+  }
+});
+window.addEventListener("orientationchange", () => {
+  setTimeout(() => {
+    if (window.airportNav && typeof window.airportNav.resizeCanvasToContainer === "function") {
+      window.airportNav.resizeCanvasToContainer();
+      window.airportNav.centerMap();
+    }
+  }, 200);
+});

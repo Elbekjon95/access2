@@ -68,7 +68,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
-    <link rel="stylesheet" href="style.css?v=1.2.5">
+    <link rel="stylesheet" href="style.css?v=1.3.5">
     <link rel="preload" href="img/airport_map_opt.webp" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -470,9 +470,9 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-    <script src="earth.js?v=1.3.4"></script>
-    <script src="navigation.js?v=1.3.4"></script>
-    <script type="module" src="./js/main.js?v=1.3.4"></script>
+    <script src="earth.js?v=1.3.5"></script>
+    <script src="navigation.js?v=1.3.5"></script>
+    <script type="module" src="./js/main.js?v=1.3.5"></script>
 </body>
 
 </html>
