@@ -68,6 +68,16 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
+    
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#050b14">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ACCSESS">
+    <link rel="apple-touch-icon" href="img/icons/icon-192.png">
+    
     <link rel="stylesheet" href="style.css?v=1.5.3">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -472,6 +482,15 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <script src="earth.js?v=1.3.7"></script>
     <script src="navigation.js?v=1.3.7"></script>
     <script type="module" src="./js/main.js?v=1.3.7"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('PWA Service Worker muvaffaqiyatli ulandi:', reg.scope))
+                    .catch(err => console.log('PWA Service Worker xatosi:', err));
+            });
+        }
+    </script>
 </body>
 
 </html>
