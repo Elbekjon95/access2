@@ -46,13 +46,13 @@ export function updateHologramScale() {
 
   // Ekran nisbati (aspect ratio) ga qarab 3D hologram o'lchami va kamera masofasini avtomatik moslashtirish
   if (aspect < 0.6) {
-    // Tor Mobil Telefonlar (Vertikal)
-    state.globeCamera.position.z = 250 * (1.15 / aspect);
-    state.globeCamera.position.y = 15;
+    // Tor Mobil Telefonlar (Vertikal) - Hologram yuqoriroqda, chat pastda turadi
+    state.globeCamera.position.z = 250 * (1.18 / aspect);
+    state.globeCamera.position.y = -45; // Ob'ektni yuqoriga chiqaradi
   } else if (aspect < 1.0) {
     // Planshet va Vertikal Kiosklar
     state.globeCamera.position.z = 250 * (1.1 / aspect);
-    state.globeCamera.position.y = 10;
+    state.globeCamera.position.y = -25;
   } else if (aspect < 1.4) {
     // Kvadrat / Kichik Noutbuk
     state.globeCamera.position.z = 250 * (1.2 / aspect);
