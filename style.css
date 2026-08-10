@@ -1414,11 +1414,30 @@ header {
         min-width: 14px !important;
     }
     
-    #admin-link-btn {
-        padding: 1px 4px !important;
-        font-size: 0.55rem !important;
+    .admin-panel-link {
+        color: var(--secondary-blue);
+        text-decoration: none;
+        font-size: 0.6rem;
+        border: 1px solid var(--secondary-blue);
+        padding: 1px 4px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
     }
     
+    .admin-panel-link .admin-text {
+        display: none !important;
+    }
+    
+    .admin-logout-link {
+        color: #ff5252;
+        text-decoration: none;
+        font-size: 0.65rem;
+        display: inline-flex;
+        align-items: center;
+    }
+
     #interaction-area {
         flex: 1;
         display: flex;
@@ -1441,9 +1460,9 @@ header {
     }
     
     #chat-output.glass-panel {
-        width: 95% !important;
-        max-width: 380px !important;
-        margin: 0 auto 22px auto !important;
+        width: 94% !important;
+        max-width: 360px !important;
+        margin: 0 auto 24px auto !important;
         padding: 0.5rem 0.7rem !important;
         border-radius: 12px !important;
         max-height: 18vh !important;
@@ -1461,21 +1480,21 @@ header {
     #bottom-nav {
         display: flex !important;
         flex-direction: row !important;
-        justify-content: center !important;
+        justify-content: space-between !important;
         align-items: center !important;
-        gap: 2px !important;
-        width: 100% !important;
-        max-width: 100% !important;
+        gap: 3px !important;
+        width: 96% !important;
+        max-width: 370px !important;
         margin: 0 auto !important;
-        padding: 0 !important;
+        padding: 0 4px !important;
         box-sizing: border-box !important;
     }
     
     .nav-btn {
-        flex: 0 1 auto !important;
+        flex: 1 1 auto !important;
         min-width: 0 !important;
         padding: 4px 5px !important;
-        font-size: 0.55rem !important;
+        font-size: 0.58rem !important;
         min-height: 30px !important;
         border-radius: 15px !important;
         white-space: nowrap !important;
@@ -1529,9 +1548,11 @@ header {
         display: none !important;
     }
     
-    #btn-complaint {
-        font-size: 0.55rem !important;
-        padding: 4px 6px !important;
+    .btn-complaint-pill {
+        background: rgba(255, 82, 82, 0.2) !important;
+        border: 1px solid #ff5252 !important;
+        font-size: 0.58rem !important;
+        padding: 4px 5px !important;
         min-height: 30px !important;
     }
     

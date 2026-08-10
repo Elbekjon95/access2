@@ -68,7 +68,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ACCSESS - Aerovokzal Ma'lumot Kioski</title>
-    <link rel="stylesheet" href="style.css?v=1.4.3">
+    <link rel="stylesheet" href="style.css?v=1.4.4">
     <link rel="preload" href="img/airport_map_opt.webp" as="image">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -309,9 +309,9 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
                         </div>
                     </div>
                     <?php if ($_SESSION['user_role'] == 'admin'): ?>
-                        <a href="admin/index.php" style="color: var(--secondary-blue); margin-left: 15px; text-decoration: none; font-size: 0.8rem; border: 1px solid var(--secondary-blue); padding: 2px 8px; border-radius: 5px;">Admin Panel</a>
+                        <a href="admin/index.php" id="admin-panel-link" class="admin-panel-link" title="Admin Panel"><i class="fas fa-tools"></i><span class="admin-text"> Admin</span></a>
                     <?php endif; ?>
-                    <a href="admin/logout.php" style="color: #ff5252; margin-left: 15px; text-decoration: none; font-size: 0.8rem;"><i class="fas fa-sign-out-alt"></i></a>
+                    <a href="admin/logout.php" id="admin-logout-link" class="admin-logout-link" title="Chiqish"><i class="fas fa-sign-out-alt"></i></a>
                 </div>
             </header>
 
@@ -329,8 +329,8 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
             </section>
 
             <nav id="bottom-nav">
-                <button id="btn-map" class="nav-btn">Harita</button>
-                <button id="btn-call" class="nav-btn" title="Operatorga qo'ng'iroq"><i class="fas fa-phone-alt"></i></button>
+                <button id="btn-map" class="nav-btn"><span class="full-text">Harita</span><span class="short-text">Xarita</span></button>
+                <button id="btn-call" class="nav-btn btn-call-circle" title="Operatorga qo'ng'iroq"><i class="fas fa-phone-alt"></i></button>
                 <div class="voice-controls">
                     <button id="btn-pause-voice" class="action-btn" title="Pause/Resume" aria-label="Pause or resume assistant voice"><i class="fas fa-pause"></i></button>
                     <button id="btn-voice" class="nav-btn mic-btn pulsing">
@@ -339,7 +339,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
                     <button id="btn-stop-voice" class="action-btn" title="Stop" aria-label="Stop assistant voice"><i class="fas fa-stop"></i></button>
                 </div>
                 <button id="btn-flights" class="nav-btn">Reyslar</button>
-                <button id="btn-complaint" class="nav-btn" style="background: rgba(255,82,82,0.2); border-color: #ff5252;" title="E'tiroz va taklif qoldirish"><span class="full-text">E'tiroz va taklif</span><span class="short-text">E'tiroz</span></button>
+                <button id="btn-complaint" class="nav-btn btn-complaint-pill" title="E'tiroz va taklif qoldirish"><span class="full-text">E'tiroz va taklif</span><span class="short-text">E'tiroz</span></button>
             </nav>
         </main>
 
