@@ -470,9 +470,9 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-    <script src="earth.js?v=1.3.5"></script>
-    <script src="navigation.js?v=1.3.5"></script>
-    <script type="module" src="./js/main.js?v=1.3.5"></script>
+    <script src="earth.js?v=1.3.6"></script>
+    <script src="navigation.js?v=1.3.6"></script>
+    <script type="module" src="./js/main.js?v=1.3.6"></script>
 </body>
 
 </html>

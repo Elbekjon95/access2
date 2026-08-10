@@ -31,7 +31,41 @@ export function initHologram() {
   });
 
   window.addEventListener("resize", onWindowResize, false);
+  window.addEventListener("orientationchange", () => {
+    setTimeout(onWindowResize, 200);
+  }, false);
+  updateHologramScale();
   animate();
+}
+
+export function updateHologramScale() {
+  if (!state.globeCamera || !state.renderer) return;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const aspect = w / h;
+
+  // Ekran nisbati (aspect ratio) ga qarab 3D hologram o'lchami va kamera masofasini avtomatik moslashtirish
+  if (aspect < 0.6) {
+    // Tor Mobil Telefonlar (Vertikal)
+    state.globeCamera.position.z = 250 * (1.15 / aspect);
+    state.globeCamera.position.y = 15;
+  } else if (aspect < 1.0) {
+    // Planshet va Vertikal Kiosklar
+    state.globeCamera.position.z = 250 * (1.1 / aspect);
+    state.globeCamera.position.y = 10;
+  } else if (aspect < 1.4) {
+    // Kvadrat / Kichik Noutbuk
+    state.globeCamera.position.z = 250 * (1.2 / aspect);
+    state.globeCamera.position.y = 0;
+  } else {
+    // Keng Desktop Ekranlar
+    state.globeCamera.position.z = 250;
+    state.globeCamera.position.y = 0;
+  }
+
+  state.globeCamera.aspect = aspect;
+  state.globeCamera.updateProjectionMatrix();
+  state.renderer.setSize(w, h);
 }
 
 function createHologramFromTexture(texture) {
@@ -90,6 +124,7 @@ function createHologramFromTexture(texture) {
 
   state.particleSystem = new THREE.Points(geometry, material);
   state.scene.add(state.particleSystem);
+  updateHologramScale();
 }
 
 function animate() {
@@ -161,9 +196,5 @@ function animate() {
 }
 
 function onWindowResize() {
-  if (state.globeCamera && state.renderer) {
-    state.globeCamera.aspect = window.innerWidth / window.innerHeight;
-    state.globeCamera.updateProjectionMatrix();
-    state.renderer.setSize(window.innerWidth, window.innerHeight);
-  }
+  updateHologramScale();
 }
