@@ -1200,19 +1200,6 @@ header {
 
 
 
-/* ========================================
-   RESPONSIVE DIZAYN - Mobile va Planshet
-   ======================================== */
-
-/* Planshet (768px - 1024px) */
-@media (max-width: 1024px) {
-    .logo-text {
-        font-size: 2rem;
-        letter-spacing: 0.3rem;
-    }
-    
-    #status-bar {
-        font-size: 0.8rem;
 /* ========================================================
    TO'LIQ RESPONSIVE DIZAYN (MOBILE, TABLET, KIOSK, DESKTOP)
    ======================================================== */
@@ -1244,8 +1231,8 @@ header {
     }
 }
 
-/* 2. Planshetlar va O'rta Ekranlar (max-width: 1199px) */
-@media (max-width: 1199px) {
+/* 2. Katta Planshetlar va O'rta Ekranlar (1024px - 1399px) */
+@media (max-width: 1399px) and (min-width: 992px) {
     #main-ui {
         padding: 1.5rem;
     }
@@ -1261,7 +1248,6 @@ header {
     
     #bottom-nav {
         gap: 0.8rem;
-        flex-wrap: wrap;
         justify-content: center;
     }
     
@@ -1275,18 +1261,9 @@ header {
         height: 68px;
         font-size: 1.45rem;
     }
-    
-    .map-side-panel {
-        width: 230px;
-        top: 70px;
-        bottom: 20px;
-    }
-    
-    .earth-flight-info-panel {
-        width: 340px;
-        min-width: 300px;
-    }
-}/* 3. Portret / Vertikal Kiosk, Planshet va Mobil Qurilmalar (max-width: 991px) */
+}
+
+/* 3. Portret / Vertikal Kiosk, Planshet va Mobil Qurilmalar (max-width: 991px) */
 @media (max-width: 991px) {
     body {
         overflow: hidden;
