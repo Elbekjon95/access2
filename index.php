@@ -79,7 +79,7 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <link rel="icon" type="image/png" sizes="192x192" href="/img/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/img/icons/icon-192.png">
     
-    <link rel="stylesheet" href="style.css?v=1.5.6">
+    <link rel="stylesheet" href="style.css?v=1.5.7">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
