@@ -3,5 +3,5 @@ require_once 'config.php';
 secureSessionStart();
 session_unset();
 session_destroy();
-header("Location: admin/login.php");
+header("Location: index.php");
 exit;

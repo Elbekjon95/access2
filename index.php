@@ -318,10 +318,12 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
                             </button>
                         </div>
                     </div>
-                    <?php if ($_SESSION['user_role'] == 'admin'): ?>
+                    <?php if (isset($_SESSION['admin_id']) || (isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin')): ?>
                         <a href="admin/index.php" id="admin-panel-link" class="admin-panel-link" title="Admin Panel"><i class="fas fa-tools"></i><span class="admin-text"> Admin</span></a>
+                        <a href="logout.php" id="admin-logout-link" class="admin-logout-link" title="Chiqish"><i class="fas fa-sign-out-alt"></i></a>
+                    <?php else: ?>
+                        <a href="admin/login.php" id="admin-login-link" class="admin-login-link" title="Admin Kirish"><i class="fas fa-shield-alt"></i></a>
                     <?php endif; ?>
-                    <a href="admin/logout.php" id="admin-logout-link" class="admin-logout-link" title="Chiqish"><i class="fas fa-sign-out-alt"></i></a>
                 </div>
             </header>
 

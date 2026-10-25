@@ -7,11 +7,6 @@
 require_once __DIR__ . '/../config.php';
 secureSessionStart();
 
-if (!isset($_SESSION['user_id']) && !isset($_SESSION['admin_id'])) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Ruxsat yo\'q']);
-    exit;
-}
 require_once 'uzbek_helper.php'; 
 require_once 'flights.php';
 require_once 'chat_helpers.php';

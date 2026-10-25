@@ -78,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     <meta name="theme-color" content="#050b14">
     <link rel="icon" type="image/png" sizes="192x192" href="/img/icons/icon-192.png">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Outfit', sans-serif; background: #050a14; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .login-card { background: rgba(255,255,255,0.05); padding: 2.5rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); width: 350px; text-align: center; }
@@ -86,6 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
         button { width: 100%; padding: 12px; background: #0072ff; border: none; border-radius: 10px; color: white; font-weight: 600; cursor: pointer; transition: 0.3s; }
         button:hover { background: #00c6ff; box-shadow: 0 0 20px rgba(0,198,255,0.5); }
         .error { color: #ff5252; margin-bottom: 1rem; font-size: 0.9rem; }
+        .back-link { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.5); text-decoration: none; font-size: 0.85rem; margin-top: 1.5rem; transition: 0.2s; }
+        .back-link:hover { color: #00c6ff; }
     </style>
 </head>
 <body>
@@ -111,6 +114,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
                 <button type="submit" name="login">KIRISH</button>
             </form>
         <?php endif; ?>
+
+        <div>
+            <a href="../index.php" class="back-link">
+                <i class="fas fa-arrow-left"></i> Kioskga qaytish
+            </a>
+        </div>
     </div>
 </body>
 </html>

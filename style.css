@@ -115,6 +115,57 @@ header {
     margin: 0;
 }
 
+.admin-panel-link {
+    color: var(--secondary-blue);
+    text-decoration: none;
+    font-size: 0.85rem;
+    border: 1px solid var(--secondary-blue);
+    padding: 5px 12px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 198, 255, 0.08);
+    transition: 0.2s;
+}
+
+.admin-panel-link:hover {
+    background: rgba(0, 198, 255, 0.2);
+    box-shadow: 0 0 12px rgba(0, 198, 255, 0.35);
+}
+
+.admin-logout-link {
+    color: #ff5252;
+    text-decoration: none;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+
+.admin-logout-link:hover {
+    color: #ff7b7b;
+    background: rgba(255, 82, 82, 0.15);
+}
+
+.admin-login-link {
+    color: rgba(255, 255, 255, 0.3);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 8px;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+
+.admin-login-link:hover {
+    color: var(--secondary-blue);
+    background: rgba(0, 198, 255, 0.1);
+}
+
 .lang-dropdown {
     position: relative;
     font-size: 0.8rem;
@@ -1446,6 +1497,14 @@ header {
     
     .admin-logout-link {
         color: #ff5252;
+        text-decoration: none;
+        font-size: 0.65rem;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .admin-login-link {
+        color: rgba(255, 255, 255, 0.35);
         text-decoration: none;
         font-size: 0.65rem;
         display: inline-flex;
