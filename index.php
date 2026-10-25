@@ -79,8 +79,25 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <link rel="icon" type="image/png" sizes="192x192" href="/img/icons/icon-192.png">
     <link rel="apple-touch-icon" href="/img/icons/icon-192.png">
     
-    <link rel="stylesheet" href="style.css?v=1.5.8">
+    <link rel="stylesheet" href="style.css?v=1.6.0">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <script>
+        // Service Worker va keshni tozalash (ERR_FAILED va TypeError ning oldini olish uchun)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (let reg of registrations) {
+                    reg.unregister();
+                }
+            });
+        }
+        if (window.caches) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -482,18 +499,9 @@ $all_points = $db->find('map_points', [], ['sort' => ['_id' => -1]]);
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
-    <script src="earth.js?v=1.3.7"></script>
-    <script src="navigation.js?v=1.3.7"></script>
-    <script type="module" src="./js/main.js?v=1.3.7"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('PWA Service Worker muvaffaqiyatli ulandi:', reg.scope))
-                    .catch(err => console.log('PWA Service Worker xatosi:', err));
-            });
-        }
-    </script>
+    <script src="earth.js?v=1.6.0"></script>
+    <script src="navigation.js?v=1.6.0"></script>
+    <script type="module" src="./js/main.js?v=1.6.0"></script>
 </body>
 
 </html>
