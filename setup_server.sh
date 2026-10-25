@@ -135,11 +135,14 @@ rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/acsess /etc/nginx/sites-enabled/
 nginx -t && systemctl restart nginx
 
-# 6. MongoDB o'rnatish
+# 6. MongoDB va mongosh o'rnatish
 echo ">>> [7/10] MongoDB o'rnatish va ishga tushirish..."
-apt install -y mongodb-org 2>/dev/null || apt install -y mongodb 2>/dev/null || true
-systemctl enable mongod 2>/dev/null || systemctl enable mongodb 2>/dev/null || true
-systemctl start mongod 2>/dev/null || systemctl start mongodb 2>/dev/null || true
+curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor --yes 2>/dev/null || true
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+apt update -y || true
+apt install -y mongodb-org php-mongodb || true
+systemctl enable mongod 2>/dev/null || true
+systemctl start mongod 2>/dev/null || true
 
 # 7. SSL sertifikat olish (certbot)
 echo ">>> [8/10] SSL sertifikat olish ($DOMAIN)..."
