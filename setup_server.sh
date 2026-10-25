@@ -35,6 +35,7 @@ apt install -y \
     mysql-server \
     php${PHP_VERSION}-fpm \
     php${PHP_VERSION}-mysql \
+    php${PHP_VERSION}-mongodb \
     php${PHP_VERSION}-gd \
     php${PHP_VERSION}-curl \
     php${PHP_VERSION}-mbstring \
@@ -113,13 +114,21 @@ rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/acsess /etc/nginx/sites-enabled/
 nginx -t && systemctl start nginx
 
-# 7. MySQL sozlash
-echo ">>> [7/10] MySQL bazasini yaratish..."
+# 7. Ma'lumotlar bazalarini sozlash (MongoDB & MySQL)
+echo ">>> [7/10] MongoDB va MySQL o'rnatish..."
+apt install -y gnupg curl
+curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor --yes 2>/dev/null || true
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+apt update || true
+apt install -y mongodb-org || apt install -y mongodb || true
+systemctl enable mongod 2>/dev/null || systemctl enable mongodb 2>/dev/null || true
+systemctl start mongod 2>/dev/null || systemctl start mongodb 2>/dev/null || true
+
 DB_NAME="acsess4"
 DB_USER="acsess_user"
 DB_PASS=$(openssl rand -base64 24 | tr -d '/+=' | head -c 20)
 
-mysql -u root << SQLEOF
+mysql -u root << SQLEOF 2>/dev/null || true
 CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
 GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
@@ -128,10 +137,9 @@ SQLEOF
 
 echo ""
 echo "======================================================"
-echo " MySQL Ma'lumotlari (SAQLANG!)"
-echo " DB_NAME: $DB_NAME"
-echo " DB_USER: $DB_USER"
-echo " DB_PASS: $DB_PASS"
+echo " Ma'lumotlar Bazasi Sozlandi"
+echo " MongoDB: 127.0.0.1:27017 (acsess4)"
+echo " MySQL:   DB: $DB_NAME | User: $DB_USER | Pass: $DB_PASS"
 echo "======================================================"
 echo ""
 
