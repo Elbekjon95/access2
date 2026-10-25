@@ -145,13 +145,18 @@ echo ""
 
 # 8. SSL sertifikat olish (certbot)
 echo ">>> [8/10] SSL sertifikat olish ($DOMAIN)..."
-certbot --nginx -d $DOMAIN -d www.$DOMAIN \
+CERT_DOMAINS="-d $DOMAIN"
+if host www.$DOMAIN >/dev/null 2>&1 || ping -c 1 -W 2 www.$DOMAIN >/dev/null 2>&1; then
+    CERT_DOMAINS="$CERT_DOMAINS -d www.$DOMAIN"
+fi
+
+certbot --nginx $CERT_DOMAINS \
     --non-interactive --agree-tos --email $EMAIL \
-    --redirect --keep-until-expiring
-echo ">>> SSL sertifikat muvaffaqiyatli olindi!"
+    --redirect --keep-until-expiring || certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email $EMAIL --redirect --keep-until-expiring || true
 
 # 9. Nginx - Faza 2: To'liq HTTPS + Permissions-Policy (mikrofon/kamera uchun)
 echo ">>> [9/10] Nginx HTTPS konfiguratsiyasi + Permissions-Policy..."
+if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
 cat > /etc/nginx/sites-available/acsess << EOF
 # HTTP → HTTPS yo'naltirish (mikrofon/kamera HTTPS talab qiladi)
 server {
@@ -211,6 +216,7 @@ server {
     client_max_body_size 100M;
 }
 EOF
+fi
 
 nginx -t && systemctl reload nginx
 echo ">>> Nginx HTTPS + Permissions-Policy sozlandi!"
