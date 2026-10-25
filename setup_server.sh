@@ -1,16 +1,14 @@
 #!/bin/bash
 
 # ============================================================
-# ACCSESS Loyihasi - AWS EC2 Ubuntu 22.04 Server Setup Script
-# Foydalanish: sudo bash setup_server.sh [your-domain.com]
+# ACCSESS Loyihasi - AWS EC2 Server Setup Script
+# Ubuntu 20.04, 22.04, 24.04, 26.04 qo'llab-quvvatlanadi
+# Foydalanish: sudo bash setup_server.sh [your-domain.com] [email]
 # ============================================================
 
-set -e
-
-DOMAIN=${1:-"yourdomain.com"}
-EMAIL=${2:-"admin@${DOMAIN}"}
+DOMAIN=${1:-"elbekroxmonov.uz"}
+EMAIL=${2:-"elbekroxmonov@gmail.com"}
 APP_DIR="/var/www/acsess"
-PHP_VERSION="8.2"
 
 echo "======================================================"
 echo " ACCSESS Server Setup Boshlandi"
@@ -18,62 +16,86 @@ echo " Domen: $DOMAIN"
 echo " Email: $EMAIL"
 echo "======================================================"
 
-# 1. Tizimni yangilash
-echo ">>> [1/10] Tizimni yangilash..."
-apt update && apt upgrade -y
+# 0. Buzilgan yoki mos kelmaydigan PPA larni tozalash
+echo ">>> [1/10] PPA larni tozalash va tizimni tayyorlash..."
+rm -f /etc/apt/sources.list.d/*ondrej* /etc/apt/sources.list.d/*php* 2>/dev/null || true
+apt install -y software-properties-common curl git unzip gnupg
+add-apt-repository universe -y 2>/dev/null || true
+apt update -y
 
-# 2. Kerakli kutubxonalarni o'rnatish
-echo ">>> [2/10] PHP $PHP_VERSION, Nginx, MySQL, Certbot o'rnatish..."
-apt install -y software-properties-common curl git unzip
-add-apt-repository ppa:ondrej/php -y
-apt update
-
+# 1. Nginx, Certbot va Tesseract o'rnatish
+echo ">>> [2/10] Nginx, Certbot va Tesseract OCR o'rnatish..."
 apt install -y \
     nginx \
     certbot \
     python3-certbot-nginx \
-    mysql-server \
-    php${PHP_VERSION}-fpm \
-    php${PHP_VERSION}-mysql \
-    php${PHP_VERSION}-mongodb \
-    php${PHP_VERSION}-gd \
-    php${PHP_VERSION}-curl \
-    php${PHP_VERSION}-mbstring \
-    php${PHP_VERSION}-xml \
-    php${PHP_VERSION}-zip \
-    php${PHP_VERSION}-intl \
-    php${PHP_VERSION}-bcmath
+    tesseract-ocr \
+    tesseract-ocr-uzb \
+    tesseract-ocr-rus \
+    tesseract-ocr-eng
 
-# 3. Tesseract OCR o'rnatish
-echo ">>> [3/10] Tesseract OCR o'rnatish (uz, ru, en)..."
-apt install -y tesseract-ocr tesseract-ocr-uzb tesseract-ocr-rus tesseract-ocr-eng
+# 2. PHP va PHP-FPM o'rnatish (standart yoki versiyalangan)
+echo ">>> [3/10] PHP va modullarni o'rnatish..."
+apt install -y \
+    php-fpm \
+    php-mysql \
+    php-mongodb \
+    php-gd \
+    php-curl \
+    php-mbstring \
+    php-xml \
+    php-zip \
+    php-intl \
+    php-bcmath 2>/dev/null || \
+apt install -y \
+    php8.2-fpm \
+    php8.2-mysql \
+    php8.2-mongodb \
+    php8.2-gd \
+    php8.2-curl \
+    php8.2-mbstring \
+    php8.2-xml \
+    php8.2-zip \
+    php8.2-intl \
+    php8.2-bcmath 2>/dev/null || true
 
-# 4. PHP.ini sozlamalari
+# PHP FPM xizmatini ishga tushirish
+systemctl start php*-fpm 2>/dev/null || true
+systemctl enable php*-fpm 2>/dev/null || true
+
+# PHP FPM soketini aniqlash
+PHP_SOCK=$(ls /run/php/php*-fpm.sock 2>/dev/null | head -n 1)
+if [ -z "$PHP_SOCK" ]; then
+    PHP_SOCK="/var/run/php/php-fpm.sock"
+fi
+echo ">>> Aniqlangan PHP-FPM soketi: $PHP_SOCK"
+
+# 3. PHP.ini sozlamalari
 echo ">>> [4/10] PHP konfiguratsiyasi..."
-PHP_INI="/etc/php/${PHP_VERSION}/fpm/php.ini"
-sed -i 's/upload_max_filesize = .*/upload_max_filesize = 100M/' $PHP_INI
-sed -i 's/post_max_size = .*/post_max_size = 100M/' $PHP_INI
-sed -i 's/max_execution_time = .*/max_execution_time = 120/' $PHP_INI
-sed -i 's/memory_limit = .*/memory_limit = 256M/' $PHP_INI
+for ini in $(ls /etc/php/*/fpm/php.ini 2>/dev/null); do
+    sed -i 's/upload_max_filesize = .*/upload_max_filesize = 100M/' $ini
+    sed -i 's/post_max_size = .*/post_max_size = 100M/' $ini
+    sed -i 's/max_execution_time = .*/max_execution_time = 120/' $ini
+    sed -i 's/memory_limit = .*/memory_limit = 256M/' $ini
+done
 
-# 5. Loyiha papkasini tayyorlash
-echo ">>> [5/10] Papkalarni yaratish..."
+# 4. Loyiha papkalarini yaratish
+echo ">>> [5/10] Loyiha papkalarini yaratish ($APP_DIR)..."
 mkdir -p $APP_DIR
 mkdir -p $APP_DIR/uploads/complaints
 mkdir -p $APP_DIR/img/captures
 mkdir -p $APP_DIR/cache
 mkdir -p $APP_DIR/tmp
 
-# Ruxsatlar
 chown -R www-data:www-data $APP_DIR
 chmod -R 755 $APP_DIR
-chmod -R 777 $APP_DIR/uploads
-chmod -R 777 $APP_DIR/img/captures
-chmod -R 777 $APP_DIR/cache
-chmod -R 777 $APP_DIR/tmp
+chmod -R 777 $APP_DIR/uploads 2>/dev/null || true
+chmod -R 777 $APP_DIR/img/captures 2>/dev/null || true
+chmod -R 777 $APP_DIR/cache 2>/dev/null || true
+chmod -R 777 $APP_DIR/tmp 2>/dev/null || true
 
-# 6. Nginx - Faza 1: HTTP only (certbot ACME challenge uchun)
-echo ">>> [6/10] Nginx HTTP konfiguratsiyasi ($DOMAIN)..."
+# 5. Nginx - HTTP konfiguratsiyasi
+echo ">>> [6/10] Nginx HTTP konfiguratsiyasi..."
 cat > /etc/nginx/sites-available/acsess << EOF
 server {
     listen 80;
@@ -96,54 +118,30 @@ server {
 
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+        fastcgi_pass unix:$PHP_SOCK;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_read_timeout 120;
     }
 
     location ~ /\.(env|git|htaccess) { deny all; return 404; }
-    location ~ ^/(tmp|debug_|test_|audit_) { deny all; return 404; }
+    location ~ ^/(tmp|debug_|test_|audit_|list_|check_|port_) { deny all; return 404; }
 
     client_max_body_size 100M;
 }
 EOF
 
-# Eski default config'ni o'chirish
 rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/acsess /etc/nginx/sites-enabled/
-nginx -t && systemctl start nginx
+nginx -t && systemctl restart nginx
 
-# 7. Ma'lumotlar bazalarini sozlash (MongoDB & MySQL)
-echo ">>> [7/10] MongoDB va MySQL o'rnatish..."
-apt install -y gnupg curl
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor --yes 2>/dev/null || true
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-apt update || true
-apt install -y mongodb-org || apt install -y mongodb || true
+# 6. MongoDB o'rnatish
+echo ">>> [7/10] MongoDB o'rnatish va ishga tushirish..."
+apt install -y mongodb-org 2>/dev/null || apt install -y mongodb 2>/dev/null || true
 systemctl enable mongod 2>/dev/null || systemctl enable mongodb 2>/dev/null || true
 systemctl start mongod 2>/dev/null || systemctl start mongodb 2>/dev/null || true
 
-DB_NAME="acsess4"
-DB_USER="acsess_user"
-DB_PASS=$(openssl rand -base64 24 | tr -d '/+=' | head -c 20)
-
-mysql -u root << SQLEOF 2>/dev/null || true
-CREATE DATABASE IF NOT EXISTS ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASS}';
-GRANT ALL PRIVILEGES ON ${DB_NAME}.* TO '${DB_USER}'@'localhost';
-FLUSH PRIVILEGES;
-SQLEOF
-
-echo ""
-echo "======================================================"
-echo " Ma'lumotlar Bazasi Sozlandi"
-echo " MongoDB: 127.0.0.1:27017 (acsess4)"
-echo " MySQL:   DB: $DB_NAME | User: $DB_USER | Pass: $DB_PASS"
-echo "======================================================"
-echo ""
-
-# 8. SSL sertifikat olish (certbot)
+# 7. SSL sertifikat olish (certbot)
 echo ">>> [8/10] SSL sertifikat olish ($DOMAIN)..."
 CERT_DOMAINS="-d $DOMAIN"
 if host www.$DOMAIN >/dev/null 2>&1 || ping -c 1 -W 2 www.$DOMAIN >/dev/null 2>&1; then
@@ -154,18 +152,16 @@ certbot --nginx $CERT_DOMAINS \
     --non-interactive --agree-tos --email $EMAIL \
     --redirect --keep-until-expiring || certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email $EMAIL --redirect --keep-until-expiring || true
 
-# 9. Nginx - Faza 2: To'liq HTTPS + Permissions-Policy (mikrofon/kamera uchun)
+# 8. Nginx - To'liq HTTPS + Permissions-Policy
 echo ">>> [9/10] Nginx HTTPS konfiguratsiyasi + Permissions-Policy..."
 if [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
 cat > /etc/nginx/sites-available/acsess << EOF
-# HTTP → HTTPS yo'naltirish (mikrofon/kamera HTTPS talab qiladi)
 server {
     listen 80;
     server_name $DOMAIN www.$DOMAIN;
     return 301 https://\$host\$request_uri;
 }
 
-# HTTPS asosiy server bloki
 server {
     listen 443 ssl http2;
     server_name $DOMAIN www.$DOMAIN;
@@ -173,23 +169,18 @@ server {
     index index.php index.html;
     charset utf-8;
 
-    # SSL sertifikatlar (Let's Encrypt / certbot)
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_ciphers         HIGH:!aNULL:!MD5;
     ssl_prefer_server_ciphers on;
 
-    # Security headers
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # Mikrofon va kamera ruxsati (getUserMedia ishlashi uchun SHART)
     add_header Permissions-Policy "camera=*, microphone=*" always;
 
-    # Logs
     access_log /var/log/nginx/acsess_access.log;
     error_log  /var/log/nginx/acsess_error.log;
 
@@ -204,7 +195,7 @@ server {
 
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/var/run/php/php${PHP_VERSION}-fpm.sock;
+        fastcgi_pass unix:$PHP_SOCK;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_read_timeout 120;
@@ -219,38 +210,17 @@ EOF
 fi
 
 nginx -t && systemctl reload nginx
-echo ">>> Nginx HTTPS + Permissions-Policy sozlandi!"
+echo ">>> Nginx sozlandi!"
 
-# 10. Xizmatlarni qayta ishga tushirish
+# 9. Xizmatlarni qayta ishga tushirish
 echo ">>> [10/10] Xizmatlarni ishga tushirish..."
-systemctl restart php${PHP_VERSION}-fpm
 systemctl restart nginx
+systemctl restart php*-fpm 2>/dev/null || true
 systemctl enable nginx
-systemctl enable php${PHP_VERSION}-fpm
-systemctl enable mysql
 
 echo ""
 echo "======================================================"
-echo " O'rnatish YAKUNLANDI!"
-echo ""
-echo " Keyingi qadamlar:"
-echo " 1. Git orqali loyihani yukling:"
-echo "    cd $APP_DIR"
-echo "    git clone https://github.com/Elbekjon95/access2.git ."
-echo ""
-echo " 2. .env faylini sozlang:"
-echo "    cp .env.production.example .env"
-echo "    nano .env"
-echo "    # DB_PASS=$DB_PASS ni kiriting"
-echo ""
-echo " 3. Ma'lumotlar bazasini import qiling:"
-echo "    mysql -u $DB_USER -p'$DB_PASS' $DB_NAME < database.sql"
-echo ""
-echo " Sayt manzili: https://$DOMAIN"
-echo " SSL: Let's Encrypt (avtomatik yangilanadi)"
-echo " Mikrofon/Kamera: HTTPS orqali ishlaydi ✓"
-echo ""
-echo " PHP: $(php -v | head -n 1)"
-echo " Nginx: $(nginx -v 2>&1)"
-echo " Tesseract: $(tesseract --version 2>&1 | head -n 1)"
+echo " Server tayyorlandi!"
+echo " Papka: $APP_DIR"
+echo " Domen: https://$DOMAIN"
 echo "======================================================"
